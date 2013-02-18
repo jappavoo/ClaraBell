@@ -1,0 +1,1 @@
+ssh cb "cd cb;. motorRead"

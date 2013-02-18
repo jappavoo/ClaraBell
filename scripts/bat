@@ -1,0 +1,1 @@
+echo $(date): $(ssh jonathan@cb "pmset -g batt")

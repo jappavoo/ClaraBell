@@ -1,0 +1,1 @@
+./joystick | ssh cb "cd cb;. motorWrite"
