@@ -16,6 +16,16 @@
 #define PORT 8000
 #define BUFLEN 4096
 
+struct Message {
+  char *str;
+  int len;
+} messages[] = { 
+  {(char *)"Hello.  My name is ClaraBell.", 30},
+  {(char *)"What's going on?", 16 }
+}; 
+#define HELLOMSG 0
+#define WAZUPMSG 1
+
 char sbuf[BUFLEN], mbuf[BUFLEN], nbuf[BUFLEN];
 int sn, mn, nn;
 #define LINELEN 4096
@@ -33,6 +43,28 @@ int processLine(char *line, int len)
     switch (line[0]) {
     case 'M': 
       if (len>1) write(motorfd, &line[1], len-1);
+      break;
+    case 'V':
+      if (len>1) {
+	char *msg=NULL; int mlen=0;
+	switch(line[1]) {
+	case 'H':
+	  msg = messages[HELLOMSG].str;
+	  mlen = messages[HELLOMSG].len;
+	  break;
+	case 'W':
+	  msg = messages[WAZUPMSG].str;
+	  mlen = messages[WAZUPMSG].len;
+	  break;
+        case '"':
+          if (len>2) {
+	    msg=&(line[2]);
+            mlen=len-2;
+	  }
+	  break;
+	}
+	if (msg && mlen) voice_say(msg, mlen);
+      }
     }
   }
   return 1;
@@ -45,11 +77,9 @@ main(int argc, char **argv)
   int maxfd=0;
   int rc,i;
   fd_set rfds, efds, fdset;
-  char *hello[] = { "Hello" };
+  char greeting[160];
 
-  voice_say(1, hello);
-
-  if (argc==1) { 
+  if (argc!=1) { 
     if (argc!=3) {
       fprintf(stderr, 
 	      "USAGE: cbserver <motordev eg. /dev/tty.usbmodem3B11> <sensordev eg. /dev/tty.usbserial-A9003Vnd>\n");
@@ -94,6 +124,8 @@ main(int argc, char **argv)
   printf("motorfd=%d sensorfd=%d netfd=%d port=%d\n", 
 	 motorfd, sensorfd, netfd, port);
 
+  snprintf(greeting, 160, "ClaraBell is ready and listening on port %d.", port);
+  voice_say(greeting, strlen(greeting));
 
   while (1)  {
     FD_COPY(&fdset, &rfds);

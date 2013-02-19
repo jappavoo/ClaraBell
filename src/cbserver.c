@@ -45,9 +45,6 @@ main(int argc, char **argv)
   int maxfd=0;
   int rc,i;
   fd_set rfds, efds, fdset;
-  char *hello[] = { "Hello" };
-
-  voice_say(1, hello);
 
   if (argc==1) { 
     if (argc!=3) {
