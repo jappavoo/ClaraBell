@@ -56,6 +56,15 @@ int processLine(char *line, int len)
       if (len>1) {
 	char *msg=NULL; int mlen=0;
 	switch(line[1]) {
+	case 'v': 
+            if (len>2) {
+	      float v;
+	      line[len]=0;
+	      sscanf(&line[2], "%f", &v);
+	      fprintf(stderr, "setting volume to %f\n", v);
+	      voice_volume(v);
+	    }
+	    break;
 	case 'H':
 	  msg = messages[HELLOMSG].str;
 	  mlen = messages[HELLOMSG].len;
@@ -147,6 +156,9 @@ main(int argc, char **argv)
 
   printf("motorfd=%d sensorfd=%d netfd=%d port=%d\n", 
 	 motorfd, sensorfd, netfd, port);
+
+  voice_init();
+  voice_volume(0.1);
 
   snprintf(greeting, 160, "ClaraBell is ready and listening on port %d.", port);
   voice_say(greeting, strlen(greeting));
