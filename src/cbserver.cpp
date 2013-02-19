@@ -21,10 +21,18 @@ struct Message {
   int len;
 } messages[] = { 
   {(char *)"Hello.  My name is ClaraBell.", 30},
-  {(char *)"What's going on?", 16 }
+  {(char *)"What's going on?", 16 },
+  {(char *)"Please?", 7 },
+  {(char *)"Yes.", 4 },
+  {(char *)"No.", 3 },
+  {(char *)"Thank you.", 10 }
 }; 
 #define HELLOMSG 0
 #define WAZUPMSG 1
+#define PLSMSG   2
+#define YESMSG   3
+#define NOMSG    4
+#define TNKUMSG  5
 
 char sbuf[BUFLEN], mbuf[BUFLEN], nbuf[BUFLEN];
 int sn, mn, nn;
@@ -55,6 +63,22 @@ int processLine(char *line, int len)
 	case 'W':
 	  msg = messages[WAZUPMSG].str;
 	  mlen = messages[WAZUPMSG].len;
+	  break;
+	case 'T':
+	  msg = messages[TNKUMSG].str;
+	  mlen = messages[TNKUMSG].len;
+	  break;
+	case 'Y':
+	  msg = messages[YESMSG].str;
+	  mlen = messages[YESMSG].len;
+	  break;
+	case 'N':
+	  msg = messages[NOMSG].str;
+	  mlen = messages[NOMSG].len;
+	  break;
+	case 'P':
+	  msg = messages[PLSMSG].str;
+	  mlen = messages[PLSMSG].len;
 	  break;
         case '"':
           if (len>2) {
