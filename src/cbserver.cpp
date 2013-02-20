@@ -25,7 +25,11 @@ struct Message {
   {(char *)"Please?", 7 },
   {(char *)"Yes.", 4 },
   {(char *)"No.", 3 },
-  {(char *)"Thank you.", 10 }
+  {(char *)"Thank you.", 10 },
+  {(char *)"Cool!",  5},
+  {(char *)"Shanti", 6},
+  {(char *)"Raja", 5},
+
 }; 
 #define HELLOMSG 0
 #define WAZUPMSG 1
@@ -33,6 +37,9 @@ struct Message {
 #define YESMSG   3
 #define NOMSG    4
 #define TNKUMSG  5
+#define COOLMSG  6
+#define SHANTMSG 7
+#define RAJAMSG  8
 
 char sbuf[BUFLEN], mbuf[BUFLEN], nbuf[BUFLEN];
 int sn, mn, nn;
@@ -88,6 +95,18 @@ int processLine(char *line, int len)
 	case 'P':
 	  msg = messages[PLSMSG].str;
 	  mlen = messages[PLSMSG].len;
+	  break;
+	case 'C':
+	  msg = messages[COOLMSG].str;
+	  mlen = messages[COOLMSG].len;
+	  break;
+	case 'S':
+	  msg = messages[SHANTMSG].str;
+	  mlen = messages[SHANTMSG].len;
+	  break;
+	case 'R':
+	  msg = messages[RAJAMSG].str;
+	  mlen = messages[RAJAMSG].len;
 	  break;
         case '"':
           if (len>2) {
