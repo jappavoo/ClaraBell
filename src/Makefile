@@ -5,6 +5,7 @@ ifeq ($(UISYSTEM),Darwin)
   UILIBS = -L/opt/local/lib -lSDLmain -lSDL -lSDL_image -framework Cocoa
   CB_LIBS=-framework Cocoa  -framework CoreAudio
   CB_CFLAGS= -O3
+//  CB_CFLAGS= -g
 else
   UINCDIR = 
   UILIBS = -lSDL

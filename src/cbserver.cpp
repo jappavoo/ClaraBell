@@ -20,7 +20,7 @@ struct Message {
   char *str;
   int len;
 } messages[] = { 
-  {(char *)"Hello.  My name is ClaraBell.", 30},
+  {(char *)"Hello.", 6},
   {(char *)"What's going on?", 16 },
   {(char *)"Please?", 7 },
   {(char *)"Yes.", 4 },
@@ -54,7 +54,7 @@ int netfd;
 int processLine(char *line, int len)
 {
   if (len>0) {
-    fprintf(stderr, "%c: %s", line[0], &line[1]);
+    //    fprintf(stderr, "%c: %s", line[0], &line[1]);
     switch (line[0]) {
     case 'M': 
       if (len>1) write(motorfd, &line[1], len-1);
@@ -186,7 +186,8 @@ main(int argc, char **argv)
     FD_COPY(&fdset, &rfds);
     FD_COPY(&fdset, &efds);
     rc = select(maxfd+1, &rfds, NULL, &efds, NULL);
-    
+    //    printf("rc=%d\n", rc);
+
     if (rc<0) {
       if (errno==EINTR) {
       } else {
@@ -223,11 +224,12 @@ main(int argc, char **argv)
     }
     
     for (i = netfd+1; i <= maxfd; i++) {
-      if ((FD_ISSET(i, &rfds)) || (( FD_ISSET(i, &efds) ))) {
-	//	printf("activity on fd=%d\n", i);
+      if (FD_ISSET(i, &rfds) || FD_ISSET(i, &efds)) { 
+	//	printf("activity on fd=%d", i);
 	nn=read(i, nbuf, BUFLEN);
+	//	printf(" nn=%d\n", nn);
 	if (nn>0) {
-	  fprintf(stderr, "got data %d on %d:\n", nn, i);
+	  //	  fprintf(stderr, "got data %d on %d:\n", nn, i);
 	  for (i=0; i<nn; i++) {
 	    line[linelen] = nbuf[i];
 	    linelen++;
@@ -238,7 +240,8 @@ main(int argc, char **argv)
 	    }
 	  }
 	} else { 
-          if (errno != EWOULDBLOCK) {
+	  //	  printf("errno=%d\n", errno); perror("read <=0");
+          if (errno != EWOULDBLOCK || nn==0) {
 	    fprintf(stderr, "ERROR on %d closing it nn=%d errno=%d\n", i, nn, errno);
 	    close(i);
 	    FD_CLR(i, &fdset);
