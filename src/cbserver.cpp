@@ -68,7 +68,7 @@ int processLine(char *line, int len)
 	      float v;
 	      line[len]=0;
 	      sscanf(&line[2], "%f", &v);
-	      fprintf(stderr, "setting volume to %f\n", v);
+	      //	      fprintf(stderr, "setting volume to %f\n", v);
 	      voice_volume(v);
 	    }
 	    break;
