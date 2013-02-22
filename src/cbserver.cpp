@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <sys/select.h>
 #include <string.h>
+#include <assert.h>
 #include "arduino-serial.h"
 #include "net.h"
 #include "voice.h"
@@ -44,12 +45,20 @@ struct Message {
 char sbuf[BUFLEN], mbuf[BUFLEN], nbuf[BUFLEN];
 int sn, mn, nn;
 #define LINELEN 4096
-char line[LINELEN];
-int linelen=0;
 
-int motorfd;
-int sensorfd;
+
 int netfd;
+
+struct Connection {
+  char line[LINELEN];
+  int  len;
+  int  fd;
+} *cons[FD_SETSIZE];
+
+struct DeviceDesc {
+  int fd;
+  struct Connection *owner;
+} motorBoard, sensorBoard;
 
 enum Motion_States { STOPPED=0, STRAIGHT_FORWARD, STRAIGHT_BACKWARD, ROTATE_LEFT, ROTATE_RIGHT, TURN_LEFT, TURN_RIGHT };
 enum Motor_Speed  { S0=0, S1=1, S2=2, S3=3, S4=4, S5=5, S6=6, S7=7, S8=8, S9=9, S10=10 };
@@ -65,7 +74,7 @@ motion_begin(char d, int s, int o)
 {
   char cmd[8];
   int len=0;
-  const int fd=1;
+  const int fd=motorBoard.fd;
 
   if ((s>=0 && s<=9) && (o>=0 && o<=4))  {
     cmd[len]='0'+s; len++;
@@ -91,7 +100,11 @@ motion_begin(char d, int s, int o)
 	break;   
       }
       if (len>1) {
+        cmd[len]='g'; len++;
 	cmd[len]='\n'; len++;
+#ifdef __TRACE__
+        write(1, cmd, len);
+#endif
 	write(fd, cmd, len);
       }
     }
@@ -103,7 +116,7 @@ motion_change(char d, int s, int o)
 {
   char cmd[16];
   int len=0;
-  const int fd=motorfd;
+  const int fd=motorBoard.fd;
 
   if ((s>=0 && s<=9) && (o>=0 && o<=4))  {
     if (ms.mstate != STOPPED) {
@@ -190,6 +203,9 @@ motion_change(char d, int s, int o)
       }
       if (len>0) {
 	cmd[len]='\n'; len++;
+#ifdef __TRACE__
+        write(1, cmd, len);
+#endif
 	write(fd, cmd, len);
       }
     }
@@ -199,7 +215,10 @@ motion_change(char d, int s, int o)
 inline void
 motion_end()
 {
-  write(motorfd, "H\n", 2);
+#ifdef __TRACE__
+        write(1, "H\n", 2);
+#endif
+  write(motorBoard.fd, "H\n", 2);
   ms.mstate = STOPPED;
 }
 
@@ -210,40 +229,52 @@ motion_init()
   motion_end();
 }
 
-int processLine(char *line, int len)
+int processLine(struct Connection *c)
 {
+  char *line=c->line;
+  int len = c->len;
   if (len>0) {
-    //    fprintf(stderr, "got: ");
-    //    write(2, line, len);
-    //    fprintf(stderr, "%c: %s", line[0], &line[1]);
+#ifdef __TRACE__
+     fprintf(stderr, "got: ");
+     write(2, line, len);
+     fprintf(stderr, "cmd=%c", line[0]);
+#endif
     switch (line[0]) {
     case 'M': 
       if (len>1) {
 	switch(line[1]) {
 	case 'B':
-	  // MOTION BEGIN
-	  if (len>2) {
-	    char d;
-	    int s,o;
-	    if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
+	  if (motorBoard.owner==NULL) {
+	    motorBoard.owner=c;
+	    // MOTION BEGIN
+	    if (len>2) {
+	      char d;
+	      int s,o;
+	      if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
 	      motion_begin(d,s,o);
+	      }
 	    }
 	  }
 	  break;
 	case 'C':
-	  // MOTION CHANGE
-	  if (len>2) {
-	    char d;
-	    int s,o;
-	    if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
-	      motion_change(d,s,o);
+	  if (motorBoard.owner==c) {
+	    // MOTION CHANGE
+	    if (len>2) {
+	      char d;
+	      int s,o;
+	      if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
+		motion_change(d,s,o);
+	      }
 	    }
 	  }
 	  break;
 	case 'E':
-	  // MOTION END
-	  motion_end();
-	  break;
+	  if (motorBoard.owner==c) {
+	    // MOTION END
+	    motion_end();
+	    motorBoard.owner=NULL;
+	    break;
+	  }
 	}
       }
       break;
@@ -328,23 +359,24 @@ main(int argc, char **argv)
   }
 
   FD_ZERO(&fdset);
+  bzero(cons,sizeof(cons));
 
   if (argc == 3) {
-    motorfd = serialport_init(argv[1],BAUD);
-    if (motorfd < 0) {
+    motorBoard.fd = serialport_init(argv[1],BAUD);
+    if (motorBoard.fd < 0) {
       fprintf(stderr, "ERROR: failed to open motordev=%s\n", argv[1]);
       return -1;
     }
-    FD_SET(motorfd, &fdset);
-    if (motorfd>maxfd) maxfd=motorfd;
+    FD_SET(motorBoard.fd, &fdset);
+    if (motorBoard.fd>maxfd) maxfd=motorBoard.fd;
     
-    sensorfd = serialport_init(argv[2],BAUD);
-    if (sensorfd < 0) {
+    sensorBoard.fd = serialport_init(argv[2],BAUD);
+    if (sensorBoard.fd < 0) {
       fprintf(stderr, "ERROR: failed to open sensordev=%s\n", argv[1]);
       return -1;
     }
-    FD_SET(sensorfd, &fdset);
-    if (sensorfd>maxfd) maxfd=sensorfd;
+    FD_SET(sensorBoard.fd, &fdset);
+    if (sensorBoard.fd>maxfd) maxfd=sensorBoard.fd;
   }
 
   if  (net_setup_listen_socket(&netfd, &port)<0) {
@@ -362,7 +394,7 @@ main(int argc, char **argv)
 
 
   printf("motorfd=%d sensorfd=%d netfd=%d port=%d\n", 
-	 motorfd, sensorfd, netfd, port);
+	 motorBoard.fd, sensorBoard.fd, netfd, port);
 
   voice_init();
   voice_volume(0.1);
@@ -385,9 +417,9 @@ main(int argc, char **argv)
       }
     }
     
-    if ((FD_ISSET(sensorfd, &efds) || (FD_ISSET(sensorfd, &rfds)))) {
+    if ((FD_ISSET(sensorBoard.fd, &efds) || (FD_ISSET(sensorBoard.fd, &rfds)))) {
       //     write(1,"+",1);
-      sn=read(sensorfd, sbuf, BUFLEN);
+      sn=read(sensorBoard.fd, sbuf, BUFLEN);
       //     write(1, sbuf, sn);
       for (i=netfd+1; i<=maxfd; i++) {
 	//	printf("i=%d n=%d\n", i, n);
@@ -397,9 +429,9 @@ main(int argc, char **argv)
       }
     }
     
-    if ((FD_ISSET(motorfd, &efds) || (FD_ISSET(motorfd, &rfds)))) {
+    if ((FD_ISSET(motorBoard.fd, &efds) || (FD_ISSET(motorBoard.fd, &rfds)))) {
       //      fprintf(stderr, "activity on motorfd=%d\n", motorfd);
-      mn=read(motorfd, mbuf, BUFLEN);
+      mn=read(motorBoard.fd, mbuf, BUFLEN);
       write(1, mbuf, mn);
     }
     
@@ -408,6 +440,10 @@ main(int argc, char **argv)
       int fd = net_accept(netfd);
       FD_SET(fd, &fdset);
       if (fd > maxfd) maxfd = fd;
+      assert(cons[fd]==NULL);
+      cons[fd]=(struct Connection *)malloc(sizeof(struct Connection));
+      cons[fd]->fd = fd;
+      cons[fd]->len = 0;
       fprintf(stderr, "new connection on fd=%d\n", fd);
     }
     
@@ -417,14 +453,16 @@ main(int argc, char **argv)
 	nn=read(i, nbuf, BUFLEN);
 	//	printf(" nn=%d\n", nn);
 	if (nn>0) {
+	  struct Connection *c = cons[i];
+	  assert(c!=NULL && c->fd==i);
 	  //	  fprintf(stderr, "got data %d on %d:\n", nn, i);
 	  for (i=0; i<nn; i++) {
-	    line[linelen] = nbuf[i];
-	    linelen++;
-	    if (linelen == LINELEN-1 || line[linelen-1]=='\n') {
-	      line[linelen]=0;
-	      processLine(line, linelen); 
-	      linelen=0;
+	    c->line[c->len] = nbuf[i];
+	    c->len++;
+	    if (c->len == LINELEN-1 || c->line[c->len-1]=='\n') {
+	      c->line[c->len]=0;
+	      processLine(c); 
+	      c->len=0;
 	    }
 	  }
 	} else { 
@@ -433,6 +471,15 @@ main(int argc, char **argv)
 	    fprintf(stderr, "ERROR on %d closing it nn=%d errno=%d\n", i, nn, errno);
 	    close(i);
 	    FD_CLR(i, &fdset);
+	    if (motorBoard.owner==cons[i]) {
+	      motion_end();
+	      motorBoard.owner=NULL;
+	    }
+	    if (sensorBoard.owner==cons[i]) {
+	      sensorBoard.owner=NULL;
+	    }
+	    free(cons[i]);
+	    cons[i]=NULL;
 	  }
 	}
       }

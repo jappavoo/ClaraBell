@@ -4,7 +4,7 @@ ifeq ($(UISYSTEM),Darwin)
   UIINCDIR = -I/opt/local/include -I/opt/local/include/SDL 
   UILIBS = -L/opt/local/lib -lSDLmain -lSDL -lSDL_image -framework Cocoa
   CB_LIBS=-framework Cocoa  -framework CoreAudio
-  CB_CFLAGS= -O3
+  CB_CFLAGS= -O3 -std=c99
 //  CB_CFLAGS= -g
 else
   UINCDIR = 
