@@ -103,7 +103,7 @@ motion_change(char d, int s, int o)
 {
   char cmd[16];
   int len=0;
-  const int fd=1;
+  const int fd=motorfd;
 
   if ((s>=0 && s<=9) && (o>=0 && o<=4))  {
     if (ms.mstate != STOPPED) {
