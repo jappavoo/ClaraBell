@@ -51,13 +51,201 @@ int motorfd;
 int sensorfd;
 int netfd;
 
+enum Motion_States { STOPPED=0, STRAIGHT_FORWARD, STRAIGHT_BACKWARD, ROTATE_LEFT, ROTATE_RIGHT, TURN_LEFT, TURN_RIGHT };
+enum Motor_Speed  { S0=0, S1=1, S2=2, S3=3, S4=4, S5=5, S6=6, S7=7, S8=8, S9=9, S10=10 };
+enum Motion_Direction { FORWARD='F', BACKWARD='B', LEFT='L', RIGHT='R' };
+
+struct MotorState {
+  enum Motion_States mstate;
+  enum Motor_Speed   speed;  
+} ms;
+
+inline void
+motion_begin(char d, int s, int o) 
+{
+  char cmd[8];
+  int len=0;
+  const int fd=1;
+
+  if ((s>=0 && s<=9) && (o>=0 && o<=4))  {
+    cmd[len]='0'+s; len++;
+    if (ms.mstate == STOPPED) {
+      switch (d) {
+      case FORWARD: 
+	cmd[len]='f'; len++;
+	ms.mstate = STRAIGHT_FORWARD;
+	break;
+      case BACKWARD:
+	cmd[len]='b'; len++; 
+	ms.mstate = STRAIGHT_BACKWARD;
+      break;
+      case LEFT:
+	cmd[len]='l'; len++; cmd[len]='b'; len++;
+	cmd[len]='r'; len++; cmd[len]='f'; len++;
+	ms.mstate = ROTATE_LEFT;
+	break;
+      case RIGHT:
+	cmd[len]='l'; len++; cmd[len]='f'; len++;
+	cmd[len]='r'; len++; cmd[len]='b'; len++;
+	ms.mstate = ROTATE_RIGHT;
+	break;   
+      }
+      if (len>1) {
+	cmd[len]='\n'; len++;
+	write(fd, cmd, len);
+      }
+    }
+  }
+}
+
+inline void
+motion_change(char d, int s, int o)
+{
+  char cmd[16];
+  int len=0;
+  const int fd=1;
+
+  if ((s>=0 && s<=9) && (o>=0 && o<=4))  {
+    if (ms.mstate != STOPPED) {
+      switch (d) {
+      case FORWARD:
+	cmd[len]='0'+s; len++;
+	cmd[len]='f'; len++;
+	ms.mstate = STRAIGHT_FORWARD;
+	break;
+      case BACKWARD:
+	cmd[len]='0'+s; len++;
+	cmd[len]='b'; len++; 
+	ms.mstate = STRAIGHT_BACKWARD;
+	break;
+      case LEFT:
+	switch (ms.mstate) {
+	case TURN_LEFT:
+	case STRAIGHT_BACKWARD:
+	case STRAIGHT_FORWARD:
+	  {
+	    int ls = (s-(o+1));
+	    if (ls>=0) {
+	      ls=(ls==0) ? '-' : '0' + ls; len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]=ls; len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]='f'; len++;
+	    } else {
+	      ls='0' + -(ls); len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]=ls; len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]='b'; len++;	      
+	    } 
+	    cmd[len]='r'; len++; 
+	    cmd[len]='0' + s; len++;
+	    cmd[len]='r'; len++;
+	    cmd[len]='f'; len++;
+	    ms.mstate = TURN_LEFT;
+	  }
+	  break;
+	case ROTATE_LEFT:
+	  cmd[len]='0' + s; len++;
+	  cmd[len]='l'; len++; cmd[len]='b'; len++;
+	  cmd[len]='r'; len++; cmd[len]='f'; len++;
+	  ms.mstate = ROTATE_LEFT;
+	  break;
+	}
+	break;
+      case RIGHT:
+	switch (ms.mstate) {
+	case TURN_RIGHT:
+	case STRAIGHT_FORWARD:
+	case STRAIGHT_BACKWARD:
+	  {
+	    int rs = (s-(o+1));
+	    if (rs>=0) {
+	      rs=(rs==0) ? '-' : '0' + rs; len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]=rs; len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]='f'; len++;
+	    } else {
+	      rs='0' + -(rs); len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]=rs; len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]='b'; len++;	      
+	    } 
+	    cmd[len]='l'; len++; 
+	    cmd[len]='0' + s; len++;
+	    cmd[len]='l'; len++;
+	    cmd[len]='f'; len++;
+	    ms.mstate = TURN_RIGHT;
+	  }
+	  break;
+	case ROTATE_RIGHT:
+	  cmd[len]='0' + s; len++;
+	  cmd[len]='l'; len++; cmd[len]='f'; len++;
+	  cmd[len]='r'; len++; cmd[len]='b'; len++;
+	  ms.mstate = ROTATE_RIGHT;
+	  break;   
+	}
+      }
+      if (len>0) {
+	cmd[len]='\n'; len++;
+	write(fd, cmd, len);
+      }
+    }
+  }
+}
+
+inline void
+motion_end()
+{
+  write(motorfd, "H\n", 2);
+  ms.mstate = STOPPED;
+}
+
+inline void
+motion_init()
+{
+  bzero(&ms, sizeof(ms));
+  motion_end();
+}
+
 int processLine(char *line, int len)
 {
   if (len>0) {
+    //    fprintf(stderr, "got: ");
+    //    write(2, line, len);
     //    fprintf(stderr, "%c: %s", line[0], &line[1]);
     switch (line[0]) {
     case 'M': 
-      if (len>1) write(motorfd, &line[1], len-1);
+      if (len>1) {
+	switch(line[1]) {
+	case 'B':
+	  // MOTION BEGIN
+	  if (len>2) {
+	    char d;
+	    int s,o;
+	    if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
+	      motion_begin(d,s,o);
+	    }
+	  }
+	  break;
+	case 'C':
+	  // MOTION CHANGE
+	  if (len>2) {
+	    char d;
+	    int s,o;
+	    if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
+	      motion_change(d,s,o);
+	    }
+	  }
+	  break;
+	case 'E':
+	  // MOTION END
+	  motion_end();
+	  break;
+	}
+      }
       break;
     case 'V':
       if (len>1) {
