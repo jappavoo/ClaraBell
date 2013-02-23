@@ -8,6 +8,7 @@
 #include "arduino-serial.h"
 #include "net.h"
 #include "voice.h"
+#include "sight.h"
 
 #ifndef FD_COPY
 #define FD_COPY(src,dest) memcpy((dest),(src),sizeof(dest))
@@ -60,7 +61,7 @@ struct DeviceDesc {
   struct Connection *owner;
 } motorBoard, sensorBoard;
 
-enum Motion_States { STOPPED=0, STRAIGHT_FORWARD, STRAIGHT_BACKWARD, ROTATE_LEFT, ROTATE_RIGHT, TURN_LEFT, TURN_RIGHT };
+enum Motion_States { STOPPED=0, STRAIGHT_FORWARD, STRAIGHT_BACKWARD, ROTATE_LEFT, ROTATE_RIGHT, FWD_TURN_LEFT, FWD_TURN_RIGHT, BWD_TURN_LEFT, BWD_TURN_RIGHT };
 enum Motor_Speed  { S0=0, S1=1, S2=2, S3=3, S4=4, S5=5, S6=6, S7=7, S8=8, S9=9, S10=10 };
 enum Motion_Direction { FORWARD='F', BACKWARD='B', LEFT='L', RIGHT='R' };
 
@@ -133,8 +134,7 @@ motion_change(char d, int s, int o)
 	break;
       case LEFT:
 	switch (ms.mstate) {
-	case TURN_LEFT:
-	case STRAIGHT_BACKWARD:
+	case FWD_TURN_LEFT:
 	case STRAIGHT_FORWARD:
 	  {
 	    int ls = (s-(o+1));
@@ -155,7 +155,31 @@ motion_change(char d, int s, int o)
 	    cmd[len]='0' + s; len++;
 	    cmd[len]='r'; len++;
 	    cmd[len]='f'; len++;
-	    ms.mstate = TURN_LEFT;
+	    ms.mstate = FWD_TURN_LEFT;
+	  }
+	  break;
+	case STRAIGHT_BACKWARD:
+	case BWD_TURN_RIGHT:
+	  {
+	    int ls = (s-(o+1));
+	    if (ls>=0) {
+	      ls=(ls==0) ? '-' : '0' + ls; len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]=ls; len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]='b'; len++;
+	    } else {
+	      ls='0' + -(ls); len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]=ls; len++;
+	      cmd[len]='l'; len++;
+	      cmd[len]='f'; len++;	      
+	    } 
+	    cmd[len]='r'; len++; 
+	    cmd[len]='0' + s; len++;
+	    cmd[len]='r'; len++;
+	    cmd[len]='b'; len++;
+	    ms.mstate = BWD_TURN_LEFT;
 	  }
 	  break;
 	case ROTATE_LEFT:
@@ -168,9 +192,8 @@ motion_change(char d, int s, int o)
 	break;
       case RIGHT:
 	switch (ms.mstate) {
-	case TURN_RIGHT:
+	case FWD_TURN_RIGHT:
 	case STRAIGHT_FORWARD:
-	case STRAIGHT_BACKWARD:
 	  {
 	    int rs = (s-(o+1));
 	    if (rs>=0) {
@@ -190,7 +213,31 @@ motion_change(char d, int s, int o)
 	    cmd[len]='0' + s; len++;
 	    cmd[len]='l'; len++;
 	    cmd[len]='f'; len++;
-	    ms.mstate = TURN_RIGHT;
+	    ms.mstate = FWD_TURN_RIGHT;
+	  }
+	  break;
+	case STRAIGHT_BACKWARD:
+	case BWD_TURN_RIGHT:
+	  {
+	    int rs = (s-(o+1));
+	    if (rs>=0) {
+	      rs=(rs==0) ? '-' : '0' + rs; len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]=rs; len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]='b'; len++;
+	    } else {
+	      rs='0' + -(rs); len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]=rs; len++;
+	      cmd[len]='r'; len++;
+	      cmd[len]='f'; len++;	      
+	    } 
+	    cmd[len]='l'; len++; 
+	    cmd[len]='0' + s; len++;
+	    cmd[len]='l'; len++;
+	    cmd[len]='b'; len++;
+	    ms.mstate = BWD_TURN_RIGHT;
 	  }
 	  break;
 	case ROTATE_RIGHT:
@@ -401,6 +448,8 @@ main(int argc, char **argv)
 
   snprintf(greeting, 160, "ClaraBell is ready and listening on port %d.", port);
   voice_say(greeting, strlen(greeting));
+
+  sight_init();
 
   while (1)  {
     FD_COPY(&fdset, &rfds);
