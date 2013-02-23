@@ -6,7 +6,8 @@ ifeq ($(UISYSTEM),Darwin)
   CB_LIBS=-framework Cocoa  -framework CoreAudio -framework QTKit
   CB_CFLAGS= -O3 -std=c99
   CB_MMFLAGS=-O3
-//  CB_CFLAGS= -g
+//  CB_MMFLAGS=-g	
+//  CB_CFLAGS= -g -std=c99
 else
   UINCDIR = 
   UILIBS = -lSDL
@@ -25,8 +26,8 @@ joystick.o: joystick.c
 joystick: joystick.o
 	gcc $(CFLAGS) -o $@ joystick.o $(libs)
 
-cbserver: cbserver.o aserial.o net.o voice.o sight.o
-	g++ $(CB_CFLAGS) -o $@ cbserver.o aserial.o net.o voice.o sight.o $(CB_LIBS)
+cbserver: cbserver.o aserial.o net.o voice.o 
+	g++ $(CB_CFLAGS) -o $@ cbserver.o aserial.o net.o voice.o $(CB_LIBS)
 
 cbserver.o: cbserver.cpp net.h arduino-serial.h
 	g++ -c $(CB_CFLAGS)  cbserver.cpp

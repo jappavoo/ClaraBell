@@ -10,6 +10,9 @@
 #include "voice.h"
 #include "sight.h"
 
+//#define __TRACE__
+//#define SUPPRESS_MOTORCMDS
+
 #ifndef FD_COPY
 #define FD_COPY(src,dest) memcpy((dest),(src),sizeof(dest))
 #endif
@@ -65,10 +68,132 @@ enum Motion_States { STOPPED=0, STRAIGHT_FORWARD, STRAIGHT_BACKWARD, ROTATE_LEFT
 enum Motor_Speed  { S0=0, S1=1, S2=2, S3=3, S4=4, S5=5, S6=6, S7=7, S8=8, S9=9, S10=10 };
 enum Motion_Direction { FORWARD='F', BACKWARD='B', LEFT='L', RIGHT='R' };
 
+
 struct MotorState {
   enum Motion_States mstate;
   enum Motor_Speed   speed;  
 } ms;
+
+inline void
+motion_polar(int s, int div, int start)
+{
+  char cmd[16];
+  int len=0;
+  const int fd=motorBoard.fd;
+
+  switch (div) {
+  case 0:  
+    // BB
+    cmd[len]='0'+s; len++;
+    cmd[len]='b'; len++;
+    break;
+  case 1:
+    // bB
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='b'; len++; 
+    break;
+  case 2:
+    // 0B
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='-'; len++;
+    cmd[len]='l'; len++; cmd[len]='b'; len++;
+    break;
+  case 3:
+    // fB
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='l'; len++; cmd[len]='b'; len++;
+    cmd[len]='r'; len++; cmd[len]='f'; len++;
+    break;
+  case 4:
+    // FB
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='l'; len++; cmd[len]='f'; len++;
+    cmd[len]='r'; len++; cmd[len]='b'; len++;
+    break;
+  case 5:
+    // Fb
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='l'; len++; cmd[len]='f'; len++;
+    cmd[len]='r'; len++; cmd[len]='b'; len++;
+    break;
+  case 6:
+    // F0
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='-'; len++;
+    cmd[len]='l'; len++; cmd[len]='f'; len++;
+    break;
+  case 7:
+    // Ff
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='f'; len++;
+    break;
+  case 8:
+    // FF
+    cmd[len]='0'+s; len++;
+    cmd[len]='f'; len++;
+    break;
+  case 9:
+    // fF
+    cmd[len]='l'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='f'; len++;
+    break;
+  case 10:
+    // 0F
+    cmd[len]='l'; len++; cmd[len]='-'; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='f'; len++;
+    break;
+  case 11:
+    // bF
+    cmd[len]='l'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='l'; len++; cmd[len]='b'; len++;
+    cmd[len]='r'; len++; cmd[len]='f'; len++;
+    break;
+  case 12:
+    // BF
+    cmd[len]='l'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='l'; len++; cmd[len]='b'; len++;
+    cmd[len]='r'; len++; cmd[len]='f'; len++;
+    break;
+  case 13:
+    // Bf
+    cmd[len]='l'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='l'; len++; cmd[len]='f'; len++;
+    cmd[len]='r'; len++; cmd[len]='b'; len++;
+    break;
+  case 14:
+    // B0
+    cmd[len]='l'; len++; cmd[len]='-'; len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='r'; len++; cmd[len]='b'; len++;
+    break;
+  case 15:
+    // Bb:
+    cmd[len]='l'; len++; cmd[len]='0'+(s/2); len++;
+    cmd[len]='r'; len++; cmd[len]='0'+s; len++;
+    cmd[len]='b'; len++; 
+    break;
+  }
+  if (len>1) {
+    if (start) { cmd[len]='g'; len++;}
+    cmd[len]='\n'; len++;
+#ifdef __TRACE__
+    write(1, cmd, len);
+#endif
+#ifndef SUPPRESS_MOTORCMDS
+    write(fd, cmd, len);
+#endif
+  }
+}
 
 inline void
 motion_begin(char d, int s, int o) 
@@ -106,7 +231,9 @@ motion_begin(char d, int s, int o)
 #ifdef __TRACE__
         write(1, cmd, len);
 #endif
+#ifndef SUPPRESS_MOTORCMDS
 	write(fd, cmd, len);
+#endif
       }
     }
   }
@@ -253,7 +380,9 @@ motion_change(char d, int s, int o)
 #ifdef __TRACE__
         write(1, cmd, len);
 #endif
+#ifndef SUPPRESS_MOTORCMDS
 	write(fd, cmd, len);
+#endif
       }
     }
   }
@@ -265,7 +394,9 @@ motion_end()
 #ifdef __TRACE__
         write(1, "H\n", 2);
 #endif
+#ifndef SUPPRESS_MOTORCMDS
   write(motorBoard.fd, "H\n", 2);
+#endif
   ms.mstate = STOPPED;
 }
 
@@ -284,12 +415,21 @@ int processLine(struct Connection *c)
 #ifdef __TRACE__
      fprintf(stderr, "got: ");
      write(2, line, len);
-     fprintf(stderr, "cmd=%c", line[0]);
+     fprintf(stderr, "\ncmd=%c\n", line[0]);
 #endif
     switch (line[0]) {
     case 'M': 
       if (len>1) {
 	switch(line[1]) {
+	case 'P':
+	  if (motorBoard.owner == NULL || motorBoard.owner == c) {
+	    int s, d;
+	    if (sscanf(&line[2], "%d,%d", &s, &d) == 2) {
+	      motion_polar(s,d,(motorBoard.owner) ? 0 : 1);
+	      motorBoard.owner=c;
+	    } 
+	  }
+	  break;
 	case 'B':
 	  if (motorBoard.owner==NULL) {
 	    motorBoard.owner=c;
@@ -449,7 +589,7 @@ main(int argc, char **argv)
   snprintf(greeting, 160, "ClaraBell is ready and listening on port %d.", port);
   voice_say(greeting, strlen(greeting));
 
-  sight_init();
+  //  sight_init();
 
   while (1)  {
     FD_COPY(&fdset, &rfds);
