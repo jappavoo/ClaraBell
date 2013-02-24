@@ -62,7 +62,7 @@ BOOL shouldKeepRunning = YES;
     NSBitmapImageRep *imageRep = 
         [NSBitmapImageRep imageRepWithData: [aFrame TIFFRepresentation]];
     
-    NSNumber *quality = [NSNumber numberWithFloat: 0.1];
+    NSNumber *quality = [NSNumber numberWithFloat: 1.0];
     
     NSDictionary *props = 
         [NSDictionary dictionaryWithObject:quality
@@ -99,7 +99,7 @@ void run(int socket)
     
     CSGCamera *camera = [[CSGCamera alloc] init];
     [camera setDelegate:delegate];
-    [camera startWithSize:NSMakeSize(640, 480)];
+    [camera startWithSize:NSMakeSize(320, 240)];
 
     /*
      * Execute RunLoop until global flag is cleared
@@ -113,7 +113,7 @@ void run(int socket)
      */
     if (socket > 0) {
         size_t len = CFDataGetLength(picture);
-        write(socket, &len, sizeof(len));
+	//        write(socket, &len, sizeof(len));
         write(socket, CFDataGetBytePtr(picture), len);
     }
     [pool release];
@@ -121,6 +121,6 @@ void run(int socket)
 
 int main(int argc, char **argv)
 {
-  run(0);
+  run(1);
   return 0;
 }

@@ -5,13 +5,15 @@
 #include <sys/select.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
+
 #include "arduino-serial.h"
 #include "net.h"
 #include "voice.h"
 #include "sight.h"
 
-//#define __TRACE__
-//#define SUPPRESS_MOTORCMDS
+#define __TRACE__
+#define SUPPRESS_MOTORCMDS
 
 #ifndef FD_COPY
 #define FD_COPY(src,dest) memcpy((dest),(src),sizeof(dest))
@@ -468,6 +470,11 @@ int processLine(struct Connection *c)
 	}
       }
       break;
+
+    case 'S':
+      sight_take(0);
+      break;
+
     case 'V':
       if (len>1) {
 	char *msg=NULL; int mlen=0;
@@ -594,7 +601,7 @@ main(int argc, char **argv)
   snprintf(greeting, 160, "ClaraBell is ready and listening on port %d.", port);
   voice_say(greeting, strlen(greeting));
 
-  //  sight_init();
+  sight_init();
 
   while (1)  {
     FD_COPY(&fdset, &rfds);

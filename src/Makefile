@@ -3,7 +3,7 @@ UISYSTEM=$(shell uname)
 ifeq ($(UISYSTEM),Darwin)
   UIINCDIR = -I/opt/local/include -I/opt/local/include/SDL 
   UILIBS = -L/opt/local/lib -lSDLmain -lSDL -lSDL_image -framework Cocoa
-  CB_LIBS=-framework Cocoa  -framework CoreAudio -framework QTKit
+  CB_LIBS=-framework Cocoa  -framework CoreAudio -framework QTKit -framework CoreAudioKit -framework Foundation -framework QuartzCore -framework QuickTime  -framework QuartzCore
   CB_CFLAGS= -O3 -std=c99
   CB_MMFLAGS=-O3
 //  CB_MMFLAGS=-g	
@@ -26,8 +26,18 @@ joystick.o: joystick.c
 joystick: joystick.o
 	gcc $(CFLAGS) -o $@ joystick.o $(libs)
 
-cbserver: cbserver.o aserial.o net.o voice.o 
-	g++ $(CB_CFLAGS) -o $@ cbserver.o aserial.o net.o voice.o $(CB_LIBS)
+cbserver: cbserver.o aserial.o net.o voice.o sight.o isight/CSGCamera.o isight/CSGImage.o
+	g++ $(CB_CFLAGS) -o $@ cbserver.o aserial.o net.o voice.o sight.o isight/CSGCamera.o isight/CSGImage.o $(CB_LIBS)
+
+isight/CSGCamera.o:
+	make -C isight
+
+isight/CSGImage.o:
+	make -C isight
+
+test_cbserver: cbserver.o aserial.o net.o voice.o sight.o 
+	g++ $(CB_CFLAGS) -o $@ cbserver.o aserial.o net.o voice.o sight.o $(CB_LIBS)
+
 
 cbserver.o: cbserver.cpp net.h arduino-serial.h
 	g++ -c $(CB_CFLAGS)  cbserver.cpp
@@ -46,3 +56,4 @@ sight.o:
 
 clean:
 	rm *.o cbserver joystick
+	make -C isight
