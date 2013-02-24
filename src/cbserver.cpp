@@ -60,8 +60,11 @@ struct Connection {
 } *cons[FD_SETSIZE];
 
 struct DeviceDesc {
+  char line[LINELEN];
   int fd;
   struct Connection *owner;
+  int linelen, d0, d1, d2, d3, prox;
+  int proxWarning;
 } motorBoard, sensorBoard;
 
 enum Motion_States { STOPPED=0, STRAIGHT_FORWARD, STRAIGHT_BACKWARD, ROTATE_LEFT, ROTATE_RIGHT, FWD_TURN_LEFT, FWD_TURN_RIGHT, BWD_TURN_LEFT, BWD_TURN_RIGHT };
@@ -547,6 +550,8 @@ main(int argc, char **argv)
 
   FD_ZERO(&fdset);
   bzero(cons,sizeof(cons));
+  bzero(&sensorBoard, sizeof(sensorBoard));
+  bzero(&motorBoard, sizeof(motorBoard));
 
   if (argc == 3) {
     motorBoard.fd = serialport_init(argv[1],BAUD);
@@ -609,6 +614,30 @@ main(int argc, char **argv)
     if ((FD_ISSET(sensorBoard.fd, &efds) || (FD_ISSET(sensorBoard.fd, &rfds)))) {
       //     write(1,"+",1);
       sn=read(sensorBoard.fd, sbuf, BUFLEN);
+      if (sn > 0) {
+	for (i=0; i<sn; i++) {
+	  sensorBoard.line[sensorBoard.linelen]=sbuf[i];
+	  sensorBoard.linelen++;
+	  if (sensorBoard.line[sensorBoard.linelen-1]=='\n' || sensorBoard.linelen==LINELEN-1) {
+	    sensorBoard.line[sensorBoard.linelen]=0;
+	    sscanf((const char *)sensorBoard.line,"%d %d %d %d %d",
+		   &sensorBoard.d0, &sensorBoard.d1, &sensorBoard.d2, &sensorBoard.d3, &sensorBoard.prox);
+          
+	    if ((sensorBoard.prox & 0xF0) && (sensorBoard.proxWarning==0)) {
+	      motion_end();
+	      motorBoard.owner=NULL;
+	      sensorBoard.proxWarning=1;
+	      //              fprintf(stderr, "Proximity Warning On\n");
+	    }
+	    if (((sensorBoard.prox & 0xF0) == 0) && (sensorBoard.proxWarning==1)) {
+	      sensorBoard.proxWarning=0;
+	      //              fprintf(stderr, "Proximity Warning OFF\n");
+	    }
+	    sensorBoard.linelen=0;
+	  }
+	}
+      }
+
       //     write(1, sbuf, sn);
       for (i=netfd+1; i<=maxfd; i++) {
 	//	printf("i=%d n=%d\n", i, n);
