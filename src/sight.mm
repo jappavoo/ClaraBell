@@ -82,22 +82,27 @@ CSGCameraDelegate *delegate;
 void 
 sight_run(int fd)
 {
+  
   //    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     
-    /*
-     * Execute RunLoop until global flag is cleared
-     */
-    NSRunLoop *theRL = [NSRunLoop currentRunLoop];
-    while (shouldKeepRunning && [theRL runMode:NSDefaultRunLoopMode 
-                                       beforeDate:[NSDate distantFuture]]);
+  shouldKeepRunning = YES;
 
-    /*
-     * Write out picture to to socket
-     */
-    int file=0;
-    if (fd == 0)  { 
-      fd=open("/tmp/cb.jpg", O_CREAT|O_TRUNC|O_WRONLY, 0666);
-      if (fd>0) { 
+  // initiate the capture
+  [camera startWithSize:NSMakeSize(320, 240)]; 
+  /*
+   * Execute RunLoop until global flag is cleared
+   */
+  NSRunLoop *theRL = [NSRunLoop currentRunLoop];
+  while (shouldKeepRunning && [theRL runMode:NSDefaultRunLoopMode 
+			       beforeDate:[NSDate distantFuture]]);
+  
+  /*
+   * Write out picture to to socket
+   */
+  int file=0;
+  if (fd == 0)  { 
+    fd=open("/tmp/cb.jpg", O_CREAT|O_TRUNC|O_WRONLY, 0666);
+    if (fd>0) { 
 	fprintf(stderr, "opened: /tmp/cb.jpg on %d\n", fd);
 	file=1;
       } else {
@@ -170,7 +175,6 @@ void *sight_loop(void *arg)
   
   camera = [[CSGCamera alloc] init];
   [camera setDelegate:delegate];
-  [camera startWithSize:NSMakeSize(320, 240)];
   
 #endif
 

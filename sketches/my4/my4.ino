@@ -12,8 +12,8 @@
 #include <NewPing.h>
 
 #define PROXIMITY_PIN 3
-int pwarning   = 15;
-int palert = 10;
+int pwarning   = 20;
+int palert     = 15;
 
 #define SONAR_NUM     4 // Number or sensors
 #define MAX_DISTANCE 500 // Maximum distance (in cm) for ping routines.  We high pass filter down to 200
@@ -84,10 +84,10 @@ void oneSensorCycle() { // Sensor ping cy<cle complete, do something with the re
          else old[i]=200;
     }
     if (old[i]<pwarning) { prox |= 1<<(SONAR_NUM + i); }
-    if (old[i]<palert) { digitalWrite(PROXIMITY_PIN, HIGH); prox |= 1<<i; } 
+    if (old[i]<=palert) { digitalWrite(PROXIMITY_PIN, HIGH); prox |= 1<<i; } 
     if (old[i]!=last[i]) { last[i]=old[i]; update=true;}
   }
- if (prox&0xf==0) digitalWrite(PROXIMITY_PIN, LOW);
+ if ((prox & 0x0F)==0) digitalWrite(PROXIMITY_PIN, LOW);
  if (update) {
     Serial.print(last[FRONT]); Serial.print(" ");
     Serial.print(last[RIGHT]); Serial.print(" ");
