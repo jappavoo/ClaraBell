@@ -6,8 +6,8 @@ ifeq ($(UISYSTEM),Darwin)
   CB_LIBS=-framework Cocoa  -framework CoreAudio -framework QTKit -framework CoreAudioKit -framework Foundation -framework QuartzCore -framework QuickTime  -framework QuartzCore
   CB_CFLAGS= -O3 -std=c99
   CB_MMFLAGS=-O3
-//  CB_MMFLAGS=-g	
-//  CB_CFLAGS= -g -std=c99
+#  CB_MMFLAGS=-g	
+#  CB_CFLAGS= -g -std=c99
 else
   UINCDIR = 
   UILIBS = -lSDL

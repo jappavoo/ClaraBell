@@ -13,7 +13,7 @@
 #include "sight.h"
 
 #define __TRACE__
-#define SUPPRESS_MOTORCMDS
+//#define SUPPRESS_MOTORCMDS
 
 #ifndef FD_COPY
 #define FD_COPY(src,dest) memcpy((dest),(src),sizeof(dest))
@@ -52,8 +52,6 @@ char sbuf[BUFLEN], mbuf[BUFLEN], nbuf[BUFLEN];
 int sn, mn, nn;
 #define LINELEN 4096
 
-
-int netfd;
 
 struct Connection {
   char line[LINELEN];
@@ -192,7 +190,8 @@ motion_polar(int s, int div, int start)
     if (start) { cmd[len]='g'; len++;}
     cmd[len]='\n'; len++;
 #ifdef __TRACE__
-    write(1, cmd, len);
+    fprintf(stderr, "%s: ", __func__);
+    write(2, cmd, len);
 #endif
 #ifndef SUPPRESS_MOTORCMDS
     write(fd, cmd, len);
@@ -234,7 +233,8 @@ motion_begin(char d, int s, int o)
         cmd[len]='g'; len++;
 	cmd[len]='\n'; len++;
 #ifdef __TRACE__
-        write(1, cmd, len);
+	fprintf(stderr, "%s: ", __func__);
+        write(2, cmd, len);
 #endif
 #ifndef SUPPRESS_MOTORCMDS
 	write(fd, cmd, len);
@@ -383,7 +383,8 @@ motion_change(char d, int s, int o)
       if (len>0) {
 	cmd[len]='\n'; len++;
 #ifdef __TRACE__
-        write(1, cmd, len);
+	fprintf(stderr, "%s: ", __func__);
+        write(2, cmd, len);
 #endif
 #ifndef SUPPRESS_MOTORCMDS
 	write(fd, cmd, len);
@@ -397,7 +398,8 @@ inline void
 motion_end()
 {
 #ifdef __TRACE__
-        write(1, "H\n", 2);
+  fprintf(stderr, "%s: ", __func__);
+  write(2, "H\n", 2);
 #endif
 #ifndef SUPPRESS_MOTORCMDS
   write(motorBoard.fd, "H\n", 2);
@@ -418,7 +420,7 @@ int processLine(struct Connection *c)
   int len = c->len;
   if (len>0) {
 #ifdef __TRACE__
-     fprintf(stderr, "got: ");
+    fprintf(stderr, "%s: ", __func__);
      write(2, line, len);
      fprintf(stderr, "\ncmd=%c\n", line[0]);
 #endif
@@ -472,7 +474,7 @@ int processLine(struct Connection *c)
       break;
 
     case 'S':
-      sight_take(0);
+      if (len>1 && line[1]=='T') sight_take();
       break;
 
     case 'V':
@@ -545,6 +547,7 @@ main(int argc, char **argv)
   int maxfd=0;
   int rc,i;
   fd_set rfds, efds, fdset;
+  int netfd, sightfd;
   char greeting[160];
 
   if (argc!=1) { 
@@ -578,6 +581,20 @@ main(int argc, char **argv)
     if (sensorBoard.fd>maxfd) maxfd=sensorBoard.fd;
   }
 
+  port++;
+  if  (net_setup_listen_socket(&sightfd, &port)<0) {
+    fprintf(stderr, "ERROR: failed to open sightfd=%d port=%d\n", sightfd, port);
+    return -1;
+  }
+  if  (net_listen(sightfd)<0) {
+    fprintf(stderr, "ERROR: failed to open netfd=%d port=%d\n", sightfd, port);
+    return -1;
+  }
+  FD_SET(sightfd, &fdset);
+  if (sightfd>maxfd) maxfd=sightfd;
+
+  port--;
+
   if  (net_setup_listen_socket(&netfd, &port)<0) {
     fprintf(stderr, "ERROR: failed to open netfd=%d port=%d\n", netfd, port);
     return -1;
@@ -587,13 +604,11 @@ main(int argc, char **argv)
     fprintf(stderr, "ERROR: failed to open netfd=%d port=%d\n", netfd, port);
     return -1;
   }
-
   FD_SET(netfd, &fdset);
   if (netfd>maxfd) maxfd=netfd;
 
-
-  printf("motorfd=%d sensorfd=%d netfd=%d port=%d\n", 
-	 motorBoard.fd, sensorBoard.fd, netfd, port);
+  printf("motorfd=%d sensorfd=%d netfd=%d port=%d sightfd=%d port=%d\n", 
+	 motorBoard.fd, sensorBoard.fd, netfd, port, sightfd, port+1);
 
   voice_init();
   voice_volume(0.1);
@@ -657,7 +672,8 @@ main(int argc, char **argv)
     if ((FD_ISSET(motorBoard.fd, &efds) || (FD_ISSET(motorBoard.fd, &rfds)))) {
       //      fprintf(stderr, "activity on motorfd=%d\n", motorfd);
       mn=read(motorBoard.fd, mbuf, BUFLEN);
-      write(1, mbuf, mn);
+      fprintf(stderr, "%s: motorBoard:", __func__);
+      write(2, mbuf, mn);
     }
     
     if ((FD_ISSET(netfd, &efds) || (FD_ISSET(netfd, &rfds)))) {
@@ -670,6 +686,12 @@ main(int argc, char **argv)
       cons[fd]->fd = fd;
       cons[fd]->len = 0;
       fprintf(stderr, "new connection on fd=%d\n", fd);
+    }
+
+    if ((FD_ISSET(sightfd, &efds) || (FD_ISSET(sightfd, &rfds)))) {
+      fprintf(stderr, "connection on sightfd=%d\n", sightfd);
+      int fd = net_accept(sightfd);
+      if (fd>0) sight_add_destination(fd);
     }
     
     for (i = netfd+1; i <= maxfd; i++) {

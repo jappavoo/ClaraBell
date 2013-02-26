@@ -4,14 +4,47 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 #ifdef __ppc__
 #import "isight/CocoaSequenceGrabber.h"
 #endif
 
 #include "sight.h"
+#include "net.h"
 
-
+void
+sight_send_image(int len, char *bytes)
+{
+  if (len==0 || bytes==NULL) return;
+  /*
+   * Write out picture to to destinations
+   */
+  // under the assumption that the list is relatively stable
+  // terminate send to the number of destinations that exist at the 
+  // start
+  int num=sight.dst_cnt;
+  for (int i=0; i<SIGHT_MAX_DESTINATIONS; i++) {
+    int fd = sight.destinations[i];
+    if (fd > 0 ) {
+      int n;
+      //      fprintf(stderr, "sending picture %d bytes to fd=%d\n", len, fd);
+      if ((n=net_writen(fd, &len, sizeof(len)))!=sizeof(len)) {
+	fprintf(stderr, "net_writen: failed writing %ld bytes n=%d closing fd=%d\n", sizeof(len), n, fd);
+	sight_remove_destination(i,fd);
+      } else {
+	if ((n=net_writen(fd, bytes, len))!=len) {
+	  fprintf(stderr, "net_writen: failed writing %d bytes n=%d closing fd=%d\n", len, n, fd);
+	  sight_remove_destination(i,fd);
+	}
+      }
+      num--;
+    }
+    if (num==0) break;
+  }
+}
 
 #ifdef __ppc__
 
@@ -80,7 +113,7 @@ BOOL shouldKeepRunning = YES;
 CSGCameraDelegate *delegate;
 
 void 
-sight_run(int fd)
+sight_run(void)
 {
   
   //    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -96,36 +129,7 @@ sight_run(int fd)
   while (shouldKeepRunning && [theRL runMode:NSDefaultRunLoopMode 
 			       beforeDate:[NSDate distantFuture]]);
   
-  /*
-   * Write out picture to to socket
-   */
-  int file=0;
-  if (fd == 0)  { 
-    fd=open("/tmp/cb.jpg", O_CREAT|O_TRUNC|O_WRONLY, 0666);
-    if (fd>0) { 
-	fprintf(stderr, "opened: /tmp/cb.jpg on %d\n", fd);
-	file=1;
-      } else {
-	fd=0;
-	perror("opening /tmp/cb.jpg");
-      }
-    }
-
-    if (fd >0 ) {
-      size_t len = CFDataGetLength(picture);
-      int n;
-      //        write(socket, &len, sizeof(len));
-      n=write(fd, CFDataGetBytePtr(picture), len);
-      if (n<=0) perror("write of image data failed");
-      fprintf(stderr, "written %d bytes image of len=%d on fd=%d\n",
-	      n, len, fd);
-      if (file) { 
-	fprintf(stderr, "closing /tmp/cb.jpg\n");
-	close(fd);
-      }
-    } else {
-      fprintf(stderr, "Failed to send the picture anywhere\n");
-    }
+  sight_send_image(CFDataGetLength(picture), CFDataGetBytePtr(picture))
 }
 
 #endif
@@ -136,19 +140,17 @@ sight_run(int fd)
 
 
 
-#define SIGHT_IMAGE_LEN 200 * 1024
-char sight_image[SIGHT_IMAGE_LEN];
+
 
 struct Sight sight; 
 
 
 void
-sight_take(int sendfd)
+sight_take(void)
 {
   int rc;
   pthread_mutex_lock(&sight.mutex);
   if (!sight.take_pic) { 
-    sight.send_fd = sendfd;
     sight.take_pic=1;
     rc = pthread_cond_signal(&sight.cond);
     assert(rc==0);
@@ -190,11 +192,29 @@ void *sight_loop(void *arg)
     assert(rc==0);
 
 #ifndef __ppc__
-    fprintf(stderr, "sight_loop: taking picture\n");
-    sleep(20);
-    fprintf(stderr, "sight_loop: picture ready\n");
+  char *ibytes=NULL;
+  int ilen=0;
+  struct stat ss;
+  fprintf(stderr, "checking for cb.img\n");
+  if (stat("cb.img", &ss)==0 && ss.st_size) {
+    fprintf(stderr, "stat succeded\n");
+    int fd = open("cb.img", O_RDONLY);
+    fprintf(stderr, "open succeded\n");
+    if (fd!=-1) {
+      ibytes = (char *) malloc(ss.st_size);
+      if (read(fd, ibytes, ss.st_size)==ss.st_size) {
+	ilen=ss.st_size;
+	fprintf(stderr, "read succeded %d\n", ilen);
+      } else { perror("read"); free(ibytes); ibytes=NULL; }
+      close(fd);
+      sight_send_image(ilen, ibytes);
+      free(ibytes); ilen=0;
+    } else perror("open");  
+  } else perror("stat");
+
+
 #else
-    sight_run(sight.send_fd);
+    sight_run();
 #endif
 
     rc=pthread_mutex_lock(&sight.mutex);
@@ -220,8 +240,9 @@ sight_init()
 {
   int rc;
   bzero(&sight, sizeof(sight));
-  sight.img = sight_image;
   
+  memset((void *)&(sight.destinations), -1, sizeof(sight.destinations));
+
   rc = pthread_cond_init(&sight.cond, NULL);
   assert(rc==0);
   rc = pthread_mutex_init(&sight.mutex, NULL);
