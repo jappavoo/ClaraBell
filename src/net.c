@@ -184,10 +184,13 @@ net_writen(FDType fd, const void *vptr, size_t n)
     // SOCKOPT SO_NOSIGPIPE
     if ( (nwritten = write(fd, ptr, nleft)) <= 0) {
 #endif
-      if (nwritten < 0 && errno == EINTR)
+      if (nwritten < 0 && (errno == EINTR || errno==EAGAIN || errno==EWOULDBLOCK))
 	nwritten = 0;	/* and call write() again */
-      else
+      else {
+        fprintf(stderr, "net_writen %d: ", errno);
+	perror("write");
 	return(-1);	/* error */
+      }
     }
     
     nleft -= nwritten;
@@ -214,10 +217,13 @@ net_readn(FDType fd, void *vptr, size_t n)
     // SOCKOPT SO_NOSIGPIPE
     if ( (nread = read(fd, ptr, nleft)) < 0) {
 #endif
-      if (errno == EINTR)
+      if (errno == EINTR ||  errno==EAGAIN || errno==EWOULDBLOCK  )
 	nread = 0;              /* and call read() again */
-      else
+      else {
+	fprintf(stderr, "net_nread: %d", errno);
+	perror("read");
 	return(-1);
+      }
     } else if (nread == 0)
       break;                          /* EOF */
 

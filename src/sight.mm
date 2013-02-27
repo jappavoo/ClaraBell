@@ -31,7 +31,8 @@ sight_send_image(int len, char *bytes)
     if (fd > 0 ) {
       int n;
       //      fprintf(stderr, "sending picture %d bytes to fd=%d\n", len, fd);
-      if ((n=net_writen(fd, &len, sizeof(len)))!=sizeof(len)) {
+      int nlen = htonl(len);
+      if ((n=net_writen(fd, &nlen, sizeof(nlen)))!=sizeof(len)) {
 	fprintf(stderr, "net_writen: failed writing %ld bytes n=%d closing fd=%d\n", sizeof(len), n, fd);
 	sight_remove_destination(i,fd);
       } else {
@@ -129,7 +130,7 @@ sight_run(void)
   while (shouldKeepRunning && [theRL runMode:NSDefaultRunLoopMode 
 			       beforeDate:[NSDate distantFuture]]);
   
-  sight_send_image(CFDataGetLength(picture), CFDataGetBytePtr(picture))
+  sight_send_image(CFDataGetLength(picture), (char *)CFDataGetBytePtr(picture));
 }
 
 #endif
@@ -182,7 +183,7 @@ void *sight_loop(void *arg)
 
   while (1) {
     while (!sight.take_pic) {
-      printf("sight_loop:  blocking\n");
+      //      printf("sight_loop:  blocking\n");
       rc = pthread_cond_wait(&sight.cond, &sight.mutex); // unlocks mutex on entry 
                                                          // requires before return
       assert(rc==0);

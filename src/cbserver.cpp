@@ -12,8 +12,13 @@
 #include "voice.h"
 #include "sight.h"
 
-#define __TRACE__
+//#define __TRACE__
 //#define SUPPRESS_MOTORCMDS
+
+#ifndef __ppc__
+#define __TRACE__
+#define SUPPRESS_MOTORCMDS
+#endif
 
 #ifndef FD_COPY
 #define FD_COPY(src,dest) memcpy((dest),(src),sizeof(dest))
