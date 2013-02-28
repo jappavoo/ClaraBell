@@ -419,7 +419,7 @@ motion_init()
   motion_end();
 }
 
-void 
+inline void 
 motorCmd(struct Connection *c)
 {
   char *line=c->line;  int len=c->len;
@@ -470,7 +470,7 @@ motorCmd(struct Connection *c)
   }
 }
 
-void 
+inline void 
 sightCmd(struct Connection *c)
 {
   char *line=c->line;
@@ -485,7 +485,7 @@ sightCmd(struct Connection *c)
   }
 }
 
-void
+inline void
 voiceCmd(struct Connection *c)
 {
   char *line=c->line;
@@ -549,7 +549,8 @@ voiceCmd(struct Connection *c)
   }
 }
 
-int processLine(struct Connection *c)
+int 
+processLine(struct Connection *c)
 {
   char *line=c->line;
   int len = c->len;
