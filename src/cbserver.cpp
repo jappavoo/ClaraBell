@@ -419,127 +419,157 @@ motion_init()
   motion_end();
 }
 
+void 
+motorCmd(struct Connection *c)
+{
+  char *line=c->line;  int len=c->len;
+  if (len>1) {
+    switch(line[1]) {
+    case 'P':
+      if (motorBoard.owner == NULL || motorBoard.owner == c) {
+	int s, d;
+	if (sscanf(&line[2], "%d,%d", &s, &d) == 2) {
+	  motion_polar(s,d,(motorBoard.owner) ? 0 : 1);
+	  motorBoard.owner=c;
+	} 
+      }
+      break;
+    case 'B':
+      if (motorBoard.owner==NULL) {
+	motorBoard.owner=c;
+	// MOTION BEGIN
+	if (len>2) {
+	  char d;
+	  int s,o;
+	  if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
+	    motion_begin(d,s,o);
+	  }
+	}
+      }
+      break;
+    case 'C':
+      if (motorBoard.owner==c) {
+	// MOTION CHANGE
+	if (len>2) {
+	  char d;
+	  int s,o;
+	  if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
+	    motion_change(d,s,o);
+	  }
+	}
+      }
+      break;
+    case 'E':
+      if (motorBoard.owner==c) {
+	// MOTION END
+	motion_end();
+	motorBoard.owner=NULL;
+	break;
+      }
+    }
+  }
+}
+
+void 
+sightCmd(struct Connection *c)
+{
+  char *line=c->line;
+  int len = c->len;
+  
+  if (len>1) {
+    switch (line[1]) {
+    case 'T': sight_take(); break;
+    case 'B': sight_start_repeat(); break;
+    case 'E': sight_stop_repeat(); break;
+    }
+  }
+}
+
+void
+voiceCmd(struct Connection *c)
+{
+  char *line=c->line;
+  int len = c->len;
+  if (len>1) {
+    char *msg=NULL; int mlen=0;
+    switch(line[1]) {
+    case 'v': 
+      if (len>2) {
+	float v;
+	line[len]=0;
+	sscanf(&line[2], "%f", &v);
+	//	      fprintf(stderr, "setting volume to %f\n", v);
+	voice_volume(v);
+      }
+      break;
+    case 'H':
+      msg = messages[HELLOMSG].str;
+      mlen = messages[HELLOMSG].len;
+      break;
+    case 'W':
+      msg = messages[WAZUPMSG].str;
+      mlen = messages[WAZUPMSG].len;
+      break;
+    case 'T':
+      msg = messages[TNKUMSG].str;
+      mlen = messages[TNKUMSG].len;
+      break;
+    case 'Y':
+      msg = messages[YESMSG].str;
+      mlen = messages[YESMSG].len;
+      break;
+    case 'N':
+      msg = messages[NOMSG].str;
+      mlen = messages[NOMSG].len;
+      break;
+    case 'P':
+      msg = messages[PLSMSG].str;
+      mlen = messages[PLSMSG].len;
+      break;
+    case 'C':
+      msg = messages[COOLMSG].str;
+      mlen = messages[COOLMSG].len;
+      break;
+    case 'S':
+      msg = messages[SHANTMSG].str;
+      mlen = messages[SHANTMSG].len;
+      break;
+    case 'R':
+      msg = messages[RAJAMSG].str;
+      mlen = messages[RAJAMSG].len;
+      break;
+    case '"':
+      if (len>2) {
+	msg=&(line[2]);
+	mlen=len-2;
+      }
+      break;
+    }
+    if (msg && mlen) voice_say(msg, mlen);
+  }
+}
+
 int processLine(struct Connection *c)
 {
   char *line=c->line;
   int len = c->len;
+
   if (len>0) {
 #ifdef __TRACE__
     fprintf(stderr, "%s: ", __func__);
-     write(2, line, len);
-     fprintf(stderr, "\ncmd=%c\n", line[0]);
+    write(2, line, len);
+    fprintf(stderr, "\ncmd=%c\n", line[0]);
 #endif
     switch (line[0]) {
     case 'M': 
-      if (len>1) {
-	switch(line[1]) {
-	case 'P':
-	  if (motorBoard.owner == NULL || motorBoard.owner == c) {
-	    int s, d;
-	    if (sscanf(&line[2], "%d,%d", &s, &d) == 2) {
-	      motion_polar(s,d,(motorBoard.owner) ? 0 : 1);
-	      motorBoard.owner=c;
-	    } 
-	  }
-	  break;
-	case 'B':
-	  if (motorBoard.owner==NULL) {
-	    motorBoard.owner=c;
-	    // MOTION BEGIN
-	    if (len>2) {
-	      char d;
-	      int s,o;
-	      if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
-	      motion_begin(d,s,o);
-	      }
-	    }
-	  }
-	  break;
-	case 'C':
-	  if (motorBoard.owner==c) {
-	    // MOTION CHANGE
-	    if (len>2) {
-	      char d;
-	      int s,o;
-	      if (sscanf(&line[2], "%c%d,%d", &d, &s, &o)==3) {
-		motion_change(d,s,o);
-	      }
-	    }
-	  }
-	  break;
-	case 'E':
-	  if (motorBoard.owner==c) {
-	    // MOTION END
-	    motion_end();
-	    motorBoard.owner=NULL;
-	    break;
-	  }
-	}
-      }
+      motorCmd(c);
       break;
-
     case 'S':
-      if (len>1 && line[1]=='T') sight_take();
+      sightCmd(c);
       break;
-
     case 'V':
-      if (len>1) {
-	char *msg=NULL; int mlen=0;
-	switch(line[1]) {
-	case 'v': 
-            if (len>2) {
-	      float v;
-	      line[len]=0;
-	      sscanf(&line[2], "%f", &v);
-	      //	      fprintf(stderr, "setting volume to %f\n", v);
-	      voice_volume(v);
-	    }
-	    break;
-	case 'H':
-	  msg = messages[HELLOMSG].str;
-	  mlen = messages[HELLOMSG].len;
-	  break;
-	case 'W':
-	  msg = messages[WAZUPMSG].str;
-	  mlen = messages[WAZUPMSG].len;
-	  break;
-	case 'T':
-	  msg = messages[TNKUMSG].str;
-	  mlen = messages[TNKUMSG].len;
-	  break;
-	case 'Y':
-	  msg = messages[YESMSG].str;
-	  mlen = messages[YESMSG].len;
-	  break;
-	case 'N':
-	  msg = messages[NOMSG].str;
-	  mlen = messages[NOMSG].len;
-	  break;
-	case 'P':
-	  msg = messages[PLSMSG].str;
-	  mlen = messages[PLSMSG].len;
-	  break;
-	case 'C':
-	  msg = messages[COOLMSG].str;
-	  mlen = messages[COOLMSG].len;
-	  break;
-	case 'S':
-	  msg = messages[SHANTMSG].str;
-	  mlen = messages[SHANTMSG].len;
-	  break;
-	case 'R':
-	  msg = messages[RAJAMSG].str;
-	  mlen = messages[RAJAMSG].len;
-	  break;
-        case '"':
-          if (len>2) {
-	    msg=&(line[2]);
-            mlen=len-2;
-	  }
-	  break;
-	}
-	if (msg && mlen) voice_say(msg, mlen);
-      }
+      voiceCmd(c);
+      break;
     }
   }
   return 1;

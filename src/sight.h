@@ -18,7 +18,7 @@ struct Sight {
   volatile int  dst_cnt;
 
   volatile int  take_pic;
-  volatile int  send_fd;
+  volatile int  repeat;
   
   pthread_t        tid;
   pthread_cond_t   cond;
@@ -29,6 +29,9 @@ extern struct Sight sight;
 
 int  sight_init(void);
 void sight_take(void);
+void sight_start_repeat(void);
+void sight_stop_repeat(void);
+
 void sight_monitor(void);
 
 static inline int  

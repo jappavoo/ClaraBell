@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#define SIGHT_REPEAT_DELAY 6
 
 #ifdef __ppc__
 #import "isight/CocoaSequenceGrabber.h"
@@ -123,6 +124,7 @@ sight_run(void)
 
   // initiate the capture
   [camera startWithSize:NSMakeSize(320, 240)]; 
+  // [camera start]; 
   /*
    * Execute RunLoop until global flag is cleared
    */
@@ -135,16 +137,7 @@ sight_run(void)
 
 #endif
 
-
-
-
-
-
-
-
-
 struct Sight sight; 
-
 
 void
 sight_take(void)
@@ -158,6 +151,33 @@ sight_take(void)
   }
   pthread_mutex_unlock(&sight.mutex);
 }
+
+
+void
+sight_start_repeat(void)
+{
+  int rc;
+  pthread_mutex_lock(&sight.mutex);
+  if (!sight.repeat) { 
+    //    fprintf(stderr, "setting sight.repeat=1\n");
+    sight.repeat=1;
+    rc = pthread_cond_signal(&sight.cond);
+    assert(rc==0);
+  }
+  pthread_mutex_unlock(&sight.mutex);
+}
+
+
+void
+sight_stop_repeat(void)
+{
+  int rc;
+  pthread_mutex_lock(&sight.mutex);
+  sight.repeat=0;
+  sight.take_pic=0;
+  pthread_mutex_unlock(&sight.mutex);
+}
+
 
 void *sight_loop(void *arg)
 {
@@ -178,20 +198,26 @@ void *sight_loop(void *arg)
   
   camera = [[CSGCamera alloc] init];
   [camera setDelegate:delegate];
-  
+
+  //  [camera setupWithSize:NSMakeSize(320, 240)]; 
 #endif
 
   while (1) {
-    while (!sight.take_pic) {
-      //      printf("sight_loop:  blocking\n");
-      rc = pthread_cond_wait(&sight.cond, &sight.mutex); // unlocks mutex on entry 
-                                                         // requires before return
+    if (sight.repeat) {
+      //      fprintf(stderr, "sight.repeat=%d sleeping ...\n", sight.repeat);
+      sleep(SIGHT_REPEAT_DELAY);
+    } else {
+      while (!sight.take_pic) {
+	//      printf("sight_loop:  blocking\n");
+	rc = pthread_cond_wait(&sight.cond, &sight.mutex); // unlocks mutex on entry 
+	// reacquires lock before return
+	assert(rc==0);
+	if (sight.repeat) break;
+      }
+      
+      rc = pthread_mutex_unlock(&sight.mutex);
       assert(rc==0);
     }
-
-    rc = pthread_mutex_unlock(&sight.mutex);
-    assert(rc==0);
-
 #ifndef __ppc__
   char *ibytes=NULL;
   int ilen=0;
@@ -218,9 +244,11 @@ void *sight_loop(void *arg)
     sight_run();
 #endif
 
-    rc=pthread_mutex_lock(&sight.mutex);
     assert(rc==0);
-    sight.take_pic = 0;
+    if (!sight.repeat) {
+      rc=pthread_mutex_lock(&sight.mutex);
+      sight.take_pic = 0;
+    }
   }
 #ifdef __ppc__
   [pool release];
@@ -228,13 +256,6 @@ void *sight_loop(void *arg)
   return NULL;
 }
 
-#ifdef __ppc__
-void
-sight_init_camera(void)
-{
-  
-}
-#endif
 
 int
 sight_init()
@@ -249,72 +270,9 @@ sight_init()
   rc = pthread_mutex_init(&sight.mutex, NULL);
   assert(rc==0);
 
-#ifdef __ppc__
-  sight_init_camera();
-#endif
   if (pthread_create(&(sight.tid), NULL, sight_loop, NULL)!=0) return -1;
   return 1;
 }
 
 
 
-#if 0
-int
-sight_init(void)	
-{	
-  int rc;
-  QTCaptureDevice *dev = NULL;
-  QTCaptureDeviceInput *camera = NULL;
-  NSError *error;
-
-  cameraSession = [[QTCaptureSession alloc] init];
-  dev = [QTCaptureDevice defaultInputDeviceWithMediaType:QTMediaTypeVideo];
-  if (dev) {
-    rc = [dev open:&error];
-    if (!rc) {
-      fprintf(stderr, "Error opening camera\n");
-      return -1;
-    }
-    camera = [[QTCaptureDeviceInput alloc] initWithDevice:dev];
-    rc = [cameraSession addInput:camera error:&error];
-    if (!rc) {
-      fprintf(stderr, "Error establishing a capture session from the camera\n");
-      return -1;
-    }
-    cameraOutput = [[QTCaptureDecompressedVideoOutput alloc] init];
-
-  } else {
-    fprintf(stderr, "No Camera found\n");
-    return -1;
-  }
-  return 1;
-}
-
-#if 0
-int sight_pic(void)
-{
-	
-    CVImageBufferRef frame = nil;               // Hold frame we find
-    while( frame == nil ){                      // While waiting for a frame
-		
-		//verbose( "\tEntering synchronized block to see if frame is captured yet...");
-        @synchronized(self){                    // Lock since capture is on another thread
-            frame = mCurrentImageBuffer;        // Hold current frame
-            CVBufferRetain(frame);              // Retain it (OK if nil)
-        }   // end sync: self
-		//verbose( "Done.\n" );
-		
-        if( frame == nil ){                     // Still no frame? Wait a little while.
-            [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow: 0.1]];
-        }   // end if: still nothing, wait
-		
-    }   // end while: no frame yet
-    
-    // Convert frame to an NSImage
-    NSCIImageRep *imageRep = [NSCIImageRep imageRepWithCIImage:[CIImage imageWithCVImageBuffer:frame]];
-    NSImage *image = [[[NSImage alloc] initWithSize:[imageRep size]] autorelease];
-    [image addRepresentation:imageRep];
-}
-#endif
-
-#endif
