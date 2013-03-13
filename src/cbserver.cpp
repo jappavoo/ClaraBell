@@ -82,6 +82,12 @@ struct MotorState {
   enum Motor_Speed   speed;  
 } ms;
 
+enum Wander_States { WANDER_NONE=0, WANDER=1, WANDER_STRAIGHT=2, WANDER_TURN=3 };
+
+struct WanderState {
+  enum Wander_States state;
+} wander;
+
 inline void
 motion_polar(int s, int div, int start)
 {
@@ -571,6 +577,12 @@ processLine(struct Connection *c)
     case 'V':
       voiceCmd(c);
       break;
+    case 'W':
+      wander.state = WANDER;
+      break;
+    case 'w':
+      wander.state = WANDER_NONE;
+      break;
     }
   }
   return 1;
@@ -690,7 +702,19 @@ main(int argc, char **argv)
 	    if (((sensorBoard.prox & 0xF0) == 0) && (sensorBoard.proxWarning==1)) {
 	      sensorBoard.proxWarning=0;
 	      //              fprintf(stderr, "Proximity Warning OFF\n");
+	      if (wander.state!=WANDER_NONE) {
+		int front=sensorBoard.d0;
+	        int right=sensorBoard.d1;
+		int back=sensorBoard.d2;
+		int left=sensorBoard.d3;
+		if (front >= right && front >= left && front >= back) {
+		  if (wander.state != WANDER_STRAIGHT) motion_polar(5,8,1);
+		} else {
+		  if (wander.state != WANDER_TURN) motion_polar(5,4,1);
+		}
+	      }
 	    }
+
 	    sensorBoard.linelen=0;
 	  }
 	}
