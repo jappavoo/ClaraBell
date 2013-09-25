@@ -578,9 +578,11 @@ processLine(struct Connection *c)
       voiceCmd(c);
       break;
     case 'W':
+      fprintf(stderr, "Wandering started\n");
       wander.state = WANDER;
       break;
     case 'w':
+      fprintf(stderr, "Wandering ended\n");
       wander.state = WANDER_NONE;
       break;
     }
@@ -701,20 +703,32 @@ main(int argc, char **argv)
 	    }
 	    if (((sensorBoard.prox & 0xF0) == 0) && (sensorBoard.proxWarning==1)) {
 	      sensorBoard.proxWarning=0;
+	    }
+
+	    if (((sensorBoard.prox & 0xF0) == 0) && (sensorBoard.proxWarning==0)) {
 	      //              fprintf(stderr, "Proximity Warning OFF\n");
 	      if (wander.state!=WANDER_NONE) {
 		int front=sensorBoard.d0;
 	        int right=sensorBoard.d1;
 		int back=sensorBoard.d2;
 		int left=sensorBoard.d3;
+		fprintf(stderr, "WANDER: f=%d r=%d b=%d l=%d\n",
+			front, right, back, left);
 		if (front >= right && front >= left && front >= back) {
-		  if (wander.state != WANDER_STRAIGHT) motion_polar(5,8,1);
+		  if (wander.state != WANDER_STRAIGHT) { 
+		    motion_polar(2,8,1);
+		    wander.state = WANDER_STRAIGHT;
+		    fprintf(stderr, "WANDER_STRAIGHT\n");
+		  }
 		} else {
-		  if (wander.state != WANDER_TURN) motion_polar(5,4,1);
+		  if (wander.state != WANDER_TURN) {
+		    motion_polar(2,4,1);
+		    wander.state = WANDER_TURN;
+		    fprintf(stderr, "WANDER_TURN\n");
+		  }
 		}
 	      }
 	    }
-
 	    sensorBoard.linelen=0;
 	  }
 	}
