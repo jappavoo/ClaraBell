@@ -10,8 +10,8 @@
 
 #include "arduino-serial.h"
 #include "net.h"
-#ifndef __linux__
 #include "voice.h"
+#ifndef __linux__
 #include "sight.h"
 #endif
 
@@ -38,8 +38,8 @@ struct Message {
   {(char *)"No.", 3 },
   {(char *)"Thank you.", 10 },
   {(char *)"Cool!",  5},
-  {(char *)"Shanti", 6},
-  {(char *)"Raja", 5},
+  {(char *)"Shawnthi", 8},
+  {(char *)"Rahjah", 6},
 
 }; 
 #define HELLOMSG 0
@@ -496,7 +496,7 @@ voiceCmd(struct Connection *c)
 {
   char *line=c->line;
   int len = c->len;
-#ifndef __linux__
+
   if (len>1) {
     char *msg=NULL; int mlen=0;
     switch(line[1]) {
@@ -554,9 +554,6 @@ voiceCmd(struct Connection *c)
     }
     if (msg && mlen) voice_say(msg, mlen);
   }
-#else
-  fprintf(stderr, "VoiceCmd: NYI\n");
-#endif
 }
 
 int 
@@ -667,14 +664,13 @@ main(int argc, char **argv)
   printf("motorfd=%d sensorfd=%d netfd=%d port=%d",
     motorBoard.fd, sensorBoard.fd, netfd, port);
 
-#ifndef __linux__
-  printf(" sightfd=%d port=%d\n", sightfd, port+1);
   voice_init();
-  voice_volume(0.1);
-
+  voice_volume(0.9);
   snprintf(greeting, 160, "ClaraBell is ready and listening on port %d.", port);
   voice_say(greeting, strlen(greeting));
 
+#ifndef __linux__
+  printf(" sightfd=%d port=%d\n", sightfd, port+1);
   sight_init();
 #else
   printf("\n");

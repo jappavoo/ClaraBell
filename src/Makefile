@@ -12,8 +12,9 @@ ifeq ($(UISYSTEM),Darwin)
 else
   UINCDIR = 
   UILIBS = -lSDL
-  CB_DEVOBJS=
+  CB_DEVOBJS=festival.o
   CB_CFLAGS= -O3 -Wno-unused-result
+  CB_LIBS = -lFestival -leststring -lestools -lestbase
 endif
 
 CFLAGS := -O3 $(UIINCDIR)
@@ -44,6 +45,9 @@ test_cbserver: cbserver.o aserial.o net.o voice.o sight.o
 
 cbserver.o: cbserver.cpp net.h arduino-serial.h
 	g++ -c $(CB_CFLAGS)  cbserver.cpp
+
+festival.o: festival.cpp voice.h
+	g++ -c $(CB_CFLAGS) festival.cpp -I /usr/include/speech_tools
 
 aserial.o: arduino-serial.c arduino-serial.h
 	gcc -c $(CB_CFLAGS) -D__LIBRARY__ arduino-serial.c -o aserial.o 
