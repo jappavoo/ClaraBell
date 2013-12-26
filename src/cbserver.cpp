@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/select.h>
 #include <string.h>
@@ -10,15 +11,13 @@
 #include "arduino-serial.h"
 #include "net.h"
 #include "voice.h"
+#ifndef __linux__
 #include "sight.h"
+#endif
 
 //#define __TRACE__
 //#define SUPPRESS_MOTORCMDS
 
-#ifndef __ppc__
-#define __TRACE__
-#define SUPPRESS_MOTORCMDS
-#endif
 
 #ifndef FD_COPY
 #define FD_COPY(src,dest) memcpy((dest),(src),sizeof(dest))
@@ -39,8 +38,8 @@ struct Message {
   {(char *)"No.", 3 },
   {(char *)"Thank you.", 10 },
   {(char *)"Cool!",  5},
-  {(char *)"Shanti", 6},
-  {(char *)"Raja", 5},
+  {(char *)"Shawnthi", 8},
+  {(char *)"Rahjah", 6},
 
 }; 
 #define HELLOMSG 0
@@ -476,12 +475,12 @@ motorCmd(struct Connection *c)
   }
 }
 
+#ifndef __linux__
 inline void 
 sightCmd(struct Connection *c)
 {
   char *line=c->line;
   int len = c->len;
-  
   if (len>1) {
     switch (line[1]) {
     case 'T': sight_take(); break;
@@ -490,12 +489,14 @@ sightCmd(struct Connection *c)
     }
   }
 }
+#endif
 
 inline void
 voiceCmd(struct Connection *c)
 {
   char *line=c->line;
   int len = c->len;
+
   if (len>1) {
     char *msg=NULL; int mlen=0;
     switch(line[1]) {
@@ -571,9 +572,11 @@ processLine(struct Connection *c)
     case 'M': 
       motorCmd(c);
       break;
+#ifndef __linux__
     case 'S':
       sightCmd(c);
       break;
+#endif
     case 'V':
       voiceCmd(c);
       break;
@@ -595,7 +598,7 @@ main(int argc, char **argv)
 {
   int port=PORT;
   int maxfd=0;
-  int rc,i;
+  int rc;
   fd_set rfds, efds, fdset;
   int netfd, sightfd;
   char greeting[160];
@@ -631,6 +634,7 @@ main(int argc, char **argv)
     if (sensorBoard.fd>maxfd) maxfd=sensorBoard.fd;
   }
 
+#ifndef __linux__
   port++;
   if  (net_setup_listen_socket(&sightfd, &port)<0) {
     fprintf(stderr, "ERROR: failed to open sightfd=%d port=%d\n", sightfd, port);
@@ -642,8 +646,8 @@ main(int argc, char **argv)
   }
   FD_SET(sightfd, &fdset);
   if (sightfd>maxfd) maxfd=sightfd;
-
   port--;
+#endif
 
   if  (net_setup_listen_socket(&netfd, &port)<0) {
     fprintf(stderr, "ERROR: failed to open netfd=%d port=%d\n", netfd, port);
@@ -657,23 +661,31 @@ main(int argc, char **argv)
   FD_SET(netfd, &fdset);
   if (netfd>maxfd) maxfd=netfd;
 
-  printf("motorfd=%d sensorfd=%d netfd=%d port=%d sightfd=%d port=%d\n", 
-	 motorBoard.fd, sensorBoard.fd, netfd, port, sightfd, port+1);
+  printf("motorfd=%d sensorfd=%d netfd=%d port=%d",
+    motorBoard.fd, sensorBoard.fd, netfd, port);
 
   voice_init();
-  voice_volume(0.1);
-
+  voice_volume(0.9);
   snprintf(greeting, 160, "ClaraBell is ready and listening on port %d.", port);
   voice_say(greeting, strlen(greeting));
 
+#ifndef __linux__
+  printf(" sightfd=%d port=%d\n", sightfd, port+1);
   sight_init();
-
+#else
+  printf("\n");
+#endif
+  
   while (1)  {
     FD_COPY(&fdset, &rfds);
     FD_COPY(&fdset, &efds);
+#ifdef __TRACE__
+    fprintf(stderr, "calling select:");
+#endif
     rc = select(maxfd+1, &rfds, NULL, &efds, NULL);
-    //    printf("rc=%d\n", rc);
-
+#ifdef __TRACE__
+    fprintf(stderr, "rc=%d\n", rc);
+#endif
     if (rc<0) {
       if (errno==EINTR) {
       } else {
@@ -684,10 +696,12 @@ main(int argc, char **argv)
     }
     
     if ((FD_ISSET(sensorBoard.fd, &efds) || (FD_ISSET(sensorBoard.fd, &rfds)))) {
-      //     write(1,"+",1);
+#ifdef __TRACE__
+      write(1,"+",1);
+#endif
       sn=read(sensorBoard.fd, sbuf, BUFLEN);
       if (sn > 0) {
-	for (i=0; i<sn; i++) {
+	for (int i=0; i<sn; i++) {
 	  sensorBoard.line[sensorBoard.linelen]=sbuf[i];
 	  sensorBoard.linelen++;
 	  if (sensorBoard.line[sensorBoard.linelen-1]=='\n' || sensorBoard.linelen==LINELEN-1) {
@@ -699,14 +713,18 @@ main(int argc, char **argv)
 	      motion_end();
 	      motorBoard.owner=NULL;
 	      sensorBoard.proxWarning=1;
-	      //              fprintf(stderr, "Proximity Warning On\n");
+#ifdef __TRACE__
+	      fprintf(stderr, "Proximity Warning On\n");
+#endif
 	    }
 	    if (((sensorBoard.prox & 0xF0) == 0) && (sensorBoard.proxWarning==1)) {
 	      sensorBoard.proxWarning=0;
 	    }
 
 	    if (((sensorBoard.prox & 0xF0) == 0) && (sensorBoard.proxWarning==0)) {
-	      //              fprintf(stderr, "Proximity Warning OFF\n");
+#ifdef __TRACE__
+	      fprintf(stderr, "Proximity Warning OFF\n");
+#endif
 	      if (wander.state!=WANDER_NONE) {
 		int front=sensorBoard.d0;
 	        int right=sensorBoard.d1;
@@ -734,9 +752,13 @@ main(int argc, char **argv)
 	}
       }
 
-      //     write(1, sbuf, sn);
-      for (i=netfd+1; i<=maxfd; i++) {
-	//	printf("i=%d n=%d\n", i, n);
+#ifdef __TRACE__
+      write(1, sbuf, sn);
+#endif
+      for (int i=netfd+1; i<=maxfd; i++) {
+#ifdef __TRACE__
+        printf("i=%d sn=%d\n", i, sn);
+#endif
 	if (FD_ISSET(i, &fdset)) {
 	  write(i, sbuf, sn);
 	}
@@ -744,7 +766,7 @@ main(int argc, char **argv)
     }
     
     if ((FD_ISSET(motorBoard.fd, &efds) || (FD_ISSET(motorBoard.fd, &rfds)))) {
-      //      fprintf(stderr, "activity on motorfd=%d\n", motorfd);
+      fprintf(stderr, "activity on motorfd=%d\n", motorBoard.fd);
       mn=read(motorBoard.fd, mbuf, BUFLEN);
       fprintf(stderr, "%s: motorBoard:", __func__);
       write(2, mbuf, mn);
@@ -762,23 +784,34 @@ main(int argc, char **argv)
       fprintf(stderr, "new connection on fd=%d\n", fd);
     }
 
+#ifndef __linux__
     if ((FD_ISSET(sightfd, &efds) || (FD_ISSET(sightfd, &rfds)))) {
       fprintf(stderr, "connection on sightfd=%d\n", sightfd);
       int fd = net_accept(sightfd);
       if (fd>0) sight_add_destination(fd);
     }
-    
-    for (i = netfd+1; i <= maxfd; i++) {
+#endif
+
+    for (int i = netfd+1; i <= maxfd; i++) {
+#ifdef __TRACE__
+      fprintf(stderr, "netfd: i = %d\n", i);
+#endif
       if (FD_ISSET(i, &rfds) || FD_ISSET(i, &efds)) { 
-	//	printf("activity on fd=%d", i);
+#ifdef __TRACE__
+	printf("activity on fd=%d", i);
+#endif
 	nn=read(i, nbuf, BUFLEN);
-	//	printf(" nn=%d\n", nn);
+#ifdef __TRACE__
+	printf(" nn=%d\n", nn);
+#endif
 	if (nn>0) {
 	  struct Connection *c = cons[i];
 	  assert(c!=NULL && c->fd==i);
-	  //	  fprintf(stderr, "got data %d on %d:\n", nn, i);
-	  for (i=0; i<nn; i++) {
-	    c->line[c->len] = nbuf[i];
+#ifdef __TRACE__
+	  fprintf(stderr, "got data %d on %d:\n", nn, i);
+#endif
+	  for (int j=0; j<nn; j++) {
+	    c->line[c->len] = nbuf[j];
 	    c->len++;
 	    if (c->len == LINELEN-1 || c->line[c->len-1]=='\n') {
 	      c->line[c->len]=0;
@@ -787,11 +820,12 @@ main(int argc, char **argv)
 	    }
 	  }
 	} else { 
-	  //	  printf("errno=%d\n", errno); perror("read <=0");
+	   printf("errno=%d\n", errno); perror("read <=0");
           if (errno != EWOULDBLOCK || nn==0) {
 	    fprintf(stderr, "ERROR on %d closing it nn=%d errno=%d\n", i, nn, errno);
 	    close(i);
 	    FD_CLR(i, &fdset);
+	    while (!FD_ISSET(maxfd, &fdset)) maxfd--;
 	    if (motorBoard.owner==cons[i]) {
 	      motion_end();
 	      motorBoard.owner=NULL;

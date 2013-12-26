@@ -6,11 +6,15 @@ ifeq ($(UISYSTEM),Darwin)
   CB_LIBS=-framework Cocoa  -framework CoreAudio -framework QTKit -framework CoreAudioKit -framework Foundation -framework QuartzCore -framework QuickTime  -framework QuartzCore
   CB_CFLAGS= -O3 -std=c99
   CB_MMFLAGS=-O3
+  CB_DEVOBJS=voice.o sight.o isight/CSGCamera.o isight/CSGImage.o
 #  CB_MMFLAGS=-g	
 #  CB_CFLAGS= -g -std=c99
 else
   UINCDIR = 
   UILIBS = -lSDL
+  CB_DEVOBJS=festival.o
+  CB_CFLAGS= -O3 -Wno-unused-result
+  CB_LIBS = -lFestival -leststring -lestools -lestbase
 endif
 
 CFLAGS := -O3 $(UIINCDIR)
@@ -26,8 +30,8 @@ joystick.o: joystick.c
 joystick: joystick.o
 	gcc $(CFLAGS) -o $@ joystick.o $(libs)
 
-cbserver: cbserver.o aserial.o net.o voice.o sight.o isight/CSGCamera.o isight/CSGImage.o
-	g++ $(CB_CFLAGS) -o $@ cbserver.o aserial.o net.o voice.o sight.o isight/CSGCamera.o isight/CSGImage.o $(CB_LIBS)
+cbserver: cbserver.o aserial.o net.o ${CB_DEVOBJS}
+	g++ $(CB_CFLAGS) -o $@ cbserver.o aserial.o net.o ${CB_DEVOBJS} $(CB_LIBS)
 
 isight/CSGCamera.o:
 	make -C isight
@@ -41,6 +45,9 @@ test_cbserver: cbserver.o aserial.o net.o voice.o sight.o
 
 cbserver.o: cbserver.cpp net.h arduino-serial.h
 	g++ -c $(CB_CFLAGS)  cbserver.cpp
+
+festival.o: festival.cpp voice.h
+	g++ -c $(CB_CFLAGS) festival.cpp -I /usr/include/speech_tools
 
 aserial.o: arduino-serial.c arduino-serial.h
 	gcc -c $(CB_CFLAGS) -D__LIBRARY__ arduino-serial.c -o aserial.o 
