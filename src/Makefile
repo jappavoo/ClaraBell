@@ -45,6 +45,8 @@ cbserver.o: cbserver.cpp net.h arduino-serial.h
 aserial.o: arduino-serial.c arduino-serial.h
 	gcc -c $(CB_CFLAGS) -D__LIBRARY__ arduino-serial.c -o aserial.o 
 
+avrcat: arduino-serial.c arduino-serial.h
+	gcc -O3 arduino-serial.c -o avrcat
 net.o: net.c net.h
 	gcc -c $(CB_CFLAGS) net.c
 
