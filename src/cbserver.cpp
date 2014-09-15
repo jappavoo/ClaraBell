@@ -627,7 +627,7 @@ main(int argc, char **argv)
     
     sensorBoard.fd = serialport_init(argv[2],BAUD);
     if (sensorBoard.fd < 0) {
-      fprintf(stderr, "ERROR: failed to open sensordev=%s\n", argv[1]);
+      fprintf(stderr, "ERROR: failed to open sensordev=%s\n", argv[2]);
       return -1;
     }
     FD_SET(sensorBoard.fd, &fdset);

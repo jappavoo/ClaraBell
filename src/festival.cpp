@@ -39,7 +39,6 @@ voice_wait()
 extern void
 voice_say(char *buf, int len)
 {
-  buf[len] = 0;
   festival_say_text(buf);
 }
 
