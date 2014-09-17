@@ -32,7 +32,7 @@ struct Message {
   int len;
 } messages[] = { 
   {(char *)"Hello.", 6},
-  {(char *)"What's going on?", 16 },
+  {(char *)"What is going on?", 17 },
   {(char *)"Please?", 7 },
   {(char *)"Yes.", 4 },
   {(char *)"No.", 3 },
@@ -40,7 +40,7 @@ struct Message {
   {(char *)"Cool!",  5},
   {(char *)"Shawnthi", 8},
   {(char *)"Rahjah", 6},
-
+  {(char *)"Hello my name is ClaraBell.  It is a pleasure to meet you.", 59}
 }; 
 #define HELLOMSG 0
 #define WAZUPMSG 1
@@ -51,6 +51,7 @@ struct Message {
 #define COOLMSG  6
 #define SHANTMSG 7
 #define RAJAMSG  8
+#define GREETMSG 9
 
 char sbuf[BUFLEN], mbuf[BUFLEN], nbuf[BUFLEN];
 int sn, mn, nn;
@@ -544,6 +545,10 @@ voiceCmd(struct Connection *c)
     case 'R':
       msg = messages[RAJAMSG].str;
       mlen = messages[RAJAMSG].len;
+      break;
+    case 'G':
+      msg = messages[GREETMSG].str;
+      mlen = messages[GREETMSG].len;
       break;
     case '"':
       if (len>2) {
