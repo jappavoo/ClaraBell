@@ -277,14 +277,16 @@ int palert     = 15;
 
 #define SONAR_NUM     4 // Number or sensors
 #define MAX_DISTANCE 200 // Maximum distance (in cm) for ping routines.  We high pass filter down to 200
-#define PING_INTERVAL 50 // Milliseconds between sensor pings (50ms is about the min to avoid cross-sensor echo).
+#define PING_INTERVAL 33 // Milliseconds between sensor pings (33ms is about the min to avoid cross-sensor echo).
 
 unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
 unsigned int old[SONAR_NUM];
 unsigned int last[SONAR_NUM];
 uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
-boolean PingAlarm;
+boolean PingAlarm = true;
+int PingProx = 0;
+boolean PingUpdate = false;
 
 #define FRONTPIN 5
 #define RIGHTPIN 4
@@ -304,36 +306,37 @@ NewPing sonar[SONAR_NUM] = {
 #define BACK  3
 
 void PingSetup() {
-  PingAlarm=true;
   for (uint8_t i=0; i< SONAR_NUM; i++) { old[i]=MAX_DISTANCE; last[i]=0; }
   pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
-  for (uint8_t i = 1; i < SONAR_NUM; i++) // Set the starting time for each sensor.
+  for (uint8_t i = 1; i < SONAR_NUM; i++) { // Set the starting time for each sensor.
     pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;
+  }
 }
 
 void PingLoop() {    
   if (millis() >= pingTimer[currentSensor]) {               // Is it this sensor's time to ping?
       cm[currentSensor] = sonar[currentSensor].ping_cm();                // do measurement -- this blocks
+      //Serial.print(currentSensor); Serial.print(": "); Serial.println(cm[currentSensor]);
+      if (cm[currentSensor] != 0) {
+        old[currentSensor]=cm[currentSensor];
+        if (old[currentSensor]<pwarning) { PingProx |= 1<<(SONAR_NUM + currentSensor); }
+        if (old[currentSensor]<=palert)  {  PingAlarm=true; PingProx |= 1<<currentSensor; } 
+        if (old[currentSensor]!=last[currentSensor]) { last[currentSensor]=old[currentSensor]; PingUpdate=true;}
+        if ((PingProx & 0x0F)==0) PingAlarm=false;
+      }
       pingTimer[currentSensor] = millis() + PING_INTERVAL * SONAR_NUM;  // Set next time this sensor will be pinged.
       if (currentSensor == SONAR_NUM - 1) {
           oneSensorCycle(); // Sensor ping cycle complete, do something with the results.
           currentSensor = 0; // start over again
-      }                  
+          PingProx = 0;
+          PingUpdate = false;
+      } else {
+        currentSensor++;      
+      }
   }
 }
 
 void oneSensorCycle() { // Sensor ping cycle complete, do something with the results.
-  int PingProx=0;
-  boolean PingUpdate = false;
-  for (uint8_t i = 0; i < SONAR_NUM; i++) {
-    if (cm[i] != 0) {  // low pass filter
-         old[i]=cm[i]; 
-    }
-    if (old[i]<pwarning) { PingProx |= 1<<(SONAR_NUM + i); }
-    if (old[i]<=palert)  {  PingAlarm=true; PingProx |= 1<<i; } 
-    if (old[i]!=last[i]) { last[i]=old[i]; PingUpdate=true;}
-  }
- if ((PingProx & 0x0F)==0) PingAlarm=false;
  if (PingUpdate) {
     Serial.print(last[FRONT]); Serial.print(" ");
     Serial.print(last[RIGHT]); Serial.print(" ");
@@ -391,8 +394,4 @@ void loop()
        }
   }
 }  
-
-
-
-
 
