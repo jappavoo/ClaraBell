@@ -392,40 +392,58 @@ PingLoop() {
 
 #include <Servo.h>
 
+#define CAMERA_TILT_MIN_VAL 60
+#define CAMERA_TILT_MAX_VAL 160
+#define CAMERA_TILT_STRAIGHT_VAL 90 
+
+
 // servo library uses timer 1
 
 Servo cameraTiltServo;  // create servo object to control a servo
-int CameraTiltAngle=90;
+int CameraTiltAngle = CAMERA_TILT_STRAIGHT_VAL;
 
 void
 cameraTiltServoUp() {
-   CameraTiltAngle=160;
+   CameraTiltAngle = CAMERA_TILT_MAX_VAL;
    cameraTiltServo.write(CameraTiltAngle);   
 }
 
 
 void
 cameraTiltServoDown() {
-   CameraTiltAngle=60;
+   CameraTiltAngle = CAMERA_TILT_MIN_VAL;
    cameraTiltServo.write(CameraTiltAngle);   
 }
 
 void
 cameraTiltServoStraight() {
-   CameraTiltAngle=86;
+   CameraTiltAngle = CAMERA_TILT_STRAIGHT_VAL;
    cameraTiltServo.write(CameraTiltAngle);   
 }
 
 void
 cameraTiltServoInc() {
-   if (CameraTiltAngle < 160) CameraTiltAngle += 1;
-   cameraTiltServo.write(CameraTiltAngle);   
+  if (CameraTiltAngle < CAMERA_TILT_MAX_VAL) {
+    CameraTiltAngle += 1;
+    cameraTiltServo.write(CameraTiltAngle);   
+  }
 }
 
 void
 cameraTiltServoDec() {
-   if (CameraTiltAngle > 60) CameraTiltAngle-=1;
-   cameraTiltServo.write(CameraTiltAngle);   
+   if (CameraTiltAngle > CAMERA_TILT_MIN_VAL) { 
+      CameraTiltAngle-=1;
+      cameraTiltServo.write(CameraTiltAngle);
+   }
+}
+
+void 
+cameraTiltValue(long val)
+{
+  if (val >= CAMERA_TILT_MIN_VAL && val <= CAMERA_TILT_MAX_VAL) {
+    CameraTiltAngle=val;		 
+    cameraTiltServo.write(CameraTiltAngle);
+  } 
 }
 
 void
@@ -435,6 +453,7 @@ cameraTiltServoSetup()
   //Serial.println("cameraTiltServoTest: START");
   cameraTiltServoStraight();
 }
+
 
 void
 cameraTiltServoTest()
@@ -509,7 +528,13 @@ loop()
           break;
         case '-':
           cameraTiltServoDec();
-          break;  
+          break;
+        case 'C':
+         {
+	   long val = Serial.parseInt();
+	   cameraTiltValue(val);
+	 }
+	   break;  
         case 'm':
           if (monTimer==0) monTimer = millis() + monInterval;
           else monTimer=0; 

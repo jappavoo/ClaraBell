@@ -70,7 +70,7 @@ struct DeviceDesc {
   struct Connection *owner;
   int linelen, d0, d1, d2, d3, prox;
   int proxWarning;
-} motorBoard, sensorBoard;
+} actuatorBoard, sensorBoard;
 
 enum Motion_States { STOPPED=0, STRAIGHT_FORWARD, STRAIGHT_BACKWARD, ROTATE_LEFT, ROTATE_RIGHT, FWD_TURN_LEFT, FWD_TURN_RIGHT, BWD_TURN_LEFT, BWD_TURN_RIGHT };
 enum Motor_Speed  { S0=0, S1=1, S2=2, S3=3, S4=4, S5=5, S6=6, S7=7, S8=8, S9=9, S10=10 };
@@ -93,7 +93,7 @@ motion_polar(int s, int div, int start)
 {
   char cmd[16];
   int len=0;
-  const int fd=motorBoard.fd;
+  const int fd=actuatorBoard.fd;
 
   switch (div) {
   case 0:  
@@ -215,7 +215,7 @@ motion_begin(char d, int s, int o)
 {
   char cmd[8];
   int len=0;
-  const int fd=motorBoard.fd;
+  const int fd=actuatorBoard.fd;
 
   if ((s>=0 && s<=9) && (o>=0 && o<=4))  {
     cmd[len]='0'+s; len++;
@@ -260,7 +260,7 @@ motion_change(char d, int s, int o)
 {
   char cmd[16];
   int len=0;
-  const int fd=motorBoard.fd;
+  const int fd=actuatorBoard.fd;
 
   if ((s>=0 && s<=9) && (o>=0 && o<=4))  {
     if (ms.mstate != STOPPED) {
@@ -413,7 +413,7 @@ motion_end()
   write(2, "H\n", 2);
 #endif
 #ifndef SUPPRESS_MOTORCMDS
-  write(motorBoard.fd, "H\n", 2);
+  write(actuatorBoard.fd, "H\n", 2);
 #endif
   ms.mstate = STOPPED;
 }
@@ -432,17 +432,17 @@ motorCmd(struct Connection *c)
   if (len>1) {
     switch(line[1]) {
     case 'P':
-      if (motorBoard.owner == NULL || motorBoard.owner == c) {
+      if (actuatorBoard.owner == NULL || actuatorBoard.owner == c) {
 	int s, d;
 	if (sscanf(&line[2], "%d,%d", &s, &d) == 2) {
-	  motion_polar(s,d,(motorBoard.owner) ? 0 : 1);
-	  motorBoard.owner=c;
+	  motion_polar(s,d,(actuatorBoard.owner) ? 0 : 1);
+	  actuatorBoard.owner=c;
 	} 
       }
       break;
     case 'B':
-      if (motorBoard.owner==NULL) {
-	motorBoard.owner=c;
+      if (actuatorBoard.owner==NULL) {
+	actuatorBoard.owner=c;
 	// MOTION BEGIN
 	if (len>2) {
 	  char d;
@@ -454,7 +454,7 @@ motorCmd(struct Connection *c)
       }
       break;
     case 'C':
-      if (motorBoard.owner==c) {
+      if (actuatorBoard.owner==c) {
 	// MOTION CHANGE
 	if (len>2) {
 	  char d;
@@ -466,10 +466,10 @@ motorCmd(struct Connection *c)
       }
       break;
     case 'E':
-      if (motorBoard.owner==c) {
+      if (actuatorBoard.owner==c) {
 	// MOTION END
 	motion_end();
-	motorBoard.owner=NULL;
+	actuatorBoard.owner=NULL;
 	break;
       }
     }
@@ -491,6 +491,17 @@ sightCmd(struct Connection *c)
   }
 }
 #endif
+
+inline void 
+cameraCmd(struct Connection *c)
+{
+  char *line=c->line;
+  int len = c->len;
+
+  if (len>1) {
+      write(actuatorBoard.fd, line[1], len-1);
+  }
+}
 
 inline void
 voiceCmd(struct Connection *c)
@@ -619,16 +630,16 @@ main(int argc, char **argv)
   FD_ZERO(&fdset);
   bzero(cons,sizeof(cons));
   bzero(&sensorBoard, sizeof(sensorBoard));
-  bzero(&motorBoard, sizeof(motorBoard));
+  bzero(&actuatorBoard, sizeof(actuatorBoard));
 
   if (argc == 3) {
-    motorBoard.fd = serialport_init(argv[1],BAUD);
-    if (motorBoard.fd < 0) {
+    actuatorBoard.fd = serialport_init(argv[1],BAUD);
+    if (actuatorBoard.fd < 0) {
       fprintf(stderr, "ERROR: failed to open motordev=%s\n", argv[1]);
       return -1;
     }
-    FD_SET(motorBoard.fd, &fdset);
-    if (motorBoard.fd>maxfd) maxfd=motorBoard.fd;
+    FD_SET(actuatorBoard.fd, &fdset);
+    if (actuatorBoard.fd>maxfd) maxfd=actuatorBoard.fd;
     
     sensorBoard.fd = serialport_init(argv[2],BAUD);
     if (sensorBoard.fd < 0) {
@@ -667,7 +678,7 @@ main(int argc, char **argv)
   if (netfd>maxfd) maxfd=netfd;
 
   printf("motorfd=%d sensorfd=%d netfd=%d port=%d",
-    motorBoard.fd, sensorBoard.fd, netfd, port);
+    actuatorBoard.fd, sensorBoard.fd, netfd, port);
 
   voice_init();
   voice_volume(0.9);
@@ -716,7 +727,7 @@ main(int argc, char **argv)
           
 	    if ((sensorBoard.prox & 0xF0) && (sensorBoard.proxWarning==0)) {
 	      motion_end();
-	      motorBoard.owner=NULL;
+	      actuatorBoard.owner=NULL;
 	      sensorBoard.proxWarning=1;
 #ifdef __TRACE__
 	      fprintf(stderr, "Proximity Warning On\n");
@@ -770,10 +781,10 @@ main(int argc, char **argv)
       }
     }
     
-    if ((FD_ISSET(motorBoard.fd, &efds) || (FD_ISSET(motorBoard.fd, &rfds)))) {
-      fprintf(stderr, "activity on motorfd=%d\n", motorBoard.fd);
-      mn=read(motorBoard.fd, mbuf, BUFLEN);
-      fprintf(stderr, "%s: motorBoard:", __func__);
+    if ((FD_ISSET(actuatorBoard.fd, &efds) || (FD_ISSET(actuatorBoard.fd, &rfds)))) {
+      fprintf(stderr, "activity on motorfd=%d\n", actuatorBoard.fd);
+      mn=read(actuatorBoard.fd, mbuf, BUFLEN);
+      fprintf(stderr, "%s: actuatorBoard:", __func__);
       write(2, mbuf, mn);
     }
     
@@ -831,9 +842,9 @@ main(int argc, char **argv)
 	    close(i);
 	    FD_CLR(i, &fdset);
 	    while (!FD_ISSET(maxfd, &fdset)) maxfd--;
-	    if (motorBoard.owner==cons[i]) {
+	    if (actuatorBoard.owner==cons[i]) {
 	      motion_end();
-	      motorBoard.owner=NULL;
+	      actuatorBoard.owner=NULL;
 	    }
 	    if (sensorBoard.owner==cons[i]) {
 	      sensorBoard.owner=NULL;
