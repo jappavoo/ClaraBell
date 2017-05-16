@@ -3,6 +3,31 @@
 // removed kill pin as it is no longer needed from the sonar board
 // might add it back for bumper switches 
 
+
+// Summary of resource usage
+//  PIN:   USAGE
+//   D0     FREE
+//   D1     FREE
+//   D2     FREE
+//   D3     LEFT MOTOR PWM    (TIMER 2: PWM)
+//   D4     PING
+//   D5     PING 
+//   D6     PING
+//   D7     PING
+//   D8     RIGHT MOTOR BRAKE
+//   D9     LEFT MOTOR BRAKE
+//   D10    CAMERA TILT SERVO     (TIMER 1: via servo library)
+//   D11    RIGHT MOTOR PWM       (TIMER 2: PWM)
+//   D12    LEFT MOTOR DIRECTION
+//   D13    RIGHT MOTOR DIRECTION
+
+//   A0     LEFT MOTOR CURRENT SENSE
+//   A1     RIGTH MOTOR CURRENT SENSE
+//   A2     FREE
+//   A3     FREE
+//   A4     FREE
+//   A5     FREE
+
 // small useful 6 volt moror min
 #define PWMMIN 54
 #define FWDVAL LOW
@@ -21,17 +46,17 @@
 #endif
 
 #define NUM_MOTORS 2
-#define LEFT  0
-#define RIGHT 1
+#define LEFT_MOTOR  0
+#define RIGHT_MOTOR 1
 
 // MOTOR PIN ASSIGNMENTS
-#define MOTOR_L_PWM     3 
+#define MOTOR_L_PWM     3   // timer_2
 #define MOTOR_L_DIR     12
 #define MOTOR_L_BRAKE   9
 #define MOTOR_L_CURRENT A0
 
 
-#define MOTOR_R_PWM     11 
+#define MOTOR_R_PWM     11 // timer_2
 #define MOTOR_R_DIR     13
 #define MOTOR_R_BRAKE   8
 #define MOTOR_R_CURRENT A1
@@ -76,7 +101,7 @@ public:
 void 
 Motor::setup(void)
 {
-  V(if (num==LEFT) Serial.println("Left: Setup"); else Serial.println("Right: Setup"));
+  V(if (num==LEFT_MOTOR) Serial.println("Left: Setup"); else Serial.println("Right: Setup"));
   pinMode(dirPin, OUTPUT); //Initiates Motor Channel A pin
   pinMode(brakePin, OUTPUT); //Initiates Brake Channel A pin
 }
@@ -84,7 +109,7 @@ Motor::setup(void)
 void
 Motor::fwd(void)
 {
-  V(if (num==LEFT) Serial.println("Left: fwd"); else Serial.println("Right: fwd"));
+  V(if (num==LEFT_MOTOR) Serial.println("Left: fwd"); else Serial.println("Right: fwd"));
   dir=FWDVAL;
   digitalWrite(dirPin, FWDVAL);
 }
@@ -92,7 +117,7 @@ Motor::fwd(void)
 void
 Motor::bwd(void)
 {
-  V(if (num==LEFT) Serial.println("Left: bwd"); else Serial.println("Right: bwd"));
+  V(if (num==LEFT_MOTOR) Serial.println("Left: bwd"); else Serial.println("Right: bwd"));
   dir=BWDVAL;
   digitalWrite(dirPin, BWDVAL);
 }
@@ -100,7 +125,7 @@ Motor::bwd(void)
 void 
 Motor::stop(void)
 {
-  V(if (num==LEFT) Serial.println("Left: stop"); else Serial.println("Right: stop"));
+  V(if (num==LEFT_MOTOR) Serial.println("Left: stop"); else Serial.println("Right: stop"));
   brake=HIGH;
   digitalWrite(brakePin, HIGH);
 }
@@ -108,7 +133,7 @@ Motor::stop(void)
 void 
 Motor::go(void)
 {
-  V(if (num==LEFT) Serial.println("Left: go"); else Serial.println("Right: go"));
+  V(if (num==LEFT_MOTOR) Serial.println("Left: go"); else Serial.println("Right: go"));
   brake=LOW;
   digitalWrite(brakePin, LOW);
 }
@@ -116,7 +141,7 @@ Motor::go(void)
 void 
 Motor::readCurrent(void)
 {
-  V(if (num==LEFT) Serial.println("Left: readCurrent"); else Serial.println("Right: readCurrent"));
+  V(if (num==LEFT_MOTOR) Serial.println("Left: readCurrent"); else Serial.println("Right: readCurrent"));
   current=(analogRead(currentPin) * (5.0/1024.0))/VOLTS_PER_AMP;
 }
 
@@ -137,7 +162,7 @@ speedToPwm(int s)
 void
 Motor::speed(int s)
 {
-  V(if (num==LEFT) Serial.println("Left: speed"); else Serial.println("Right: speed"));
+  V(if (num==LEFT_MOTOR) Serial.println("Left: speed"); else Serial.println("Right: speed"));
   spd = validateSpeed(s);
   pwm = speedToPwm(spd);
   analogWrite(pwmPin, pwm);
@@ -146,7 +171,7 @@ Motor::speed(int s)
 void
 Motor::reset(void) 
 {
-   V(if (num==LEFT) Serial.println("Left: reset"); else Serial.println("Right: reset"));
+   V(if (num==LEFT_MOTOR) Serial.println("Left: reset"); else Serial.println("Right: reset"));
    stop();
    speed(0);
    fwd();
@@ -228,7 +253,7 @@ Motor::Motor(int i, int pp, int dp, int bp, int cp)
 void 
 Motor::info(void)
 {
-  if (num==LEFT) Serial.print("Left:  "); else Serial.print("Right: ");
+  if (num==LEFT_MOTOR) Serial.print("Left:  "); else Serial.print("Right: ");
   Serial.print("Info: pwmPin="); Serial.print(pwmPin); 
   Serial.print(", dirPin="); Serial.print(dirPin); 
   Serial.print(", brakePin="); Serial.print(brakePin); 
@@ -246,7 +271,7 @@ Motor::info(void)
 void
 Motor::status(void) 
 {
-  if (num==LEFT) Serial.print("Left:  "); else Serial.print("Right: ");
+  if (num==LEFT_MOTOR) Serial.print("Left:  "); else Serial.print("Right: ");
   Serial.print("State: pwm="); Serial.print(pwm); 
   Serial.print(" speed="); Serial.print(spd);
   Serial.print(" dir="); Serial.print(dir); 
@@ -254,10 +279,11 @@ Motor::status(void)
   Serial.print(" current="); Serial.println(current);  
 }
 
-Motor L(LEFT , MOTOR_L_PWM, MOTOR_L_DIR, MOTOR_L_BRAKE, MOTOR_L_CURRENT);
-Motor R(RIGHT, MOTOR_R_PWM, MOTOR_R_DIR, MOTOR_R_BRAKE, MOTOR_R_CURRENT);
+Motor L(LEFT_MOTOR , MOTOR_L_PWM, MOTOR_L_DIR, MOTOR_L_BRAKE, MOTOR_L_CURRENT);
+Motor R(RIGHT_MOTOR, MOTOR_R_PWM, MOTOR_R_DIR, MOTOR_R_BRAKE, MOTOR_R_CURRENT);
 
-void test(void)
+void 
+testMotors()
 {
   L.speed(5); L.go(); delay(500); L.stop();
   delay(500);
@@ -293,6 +319,12 @@ boolean PingUpdate = false;
 #define LEFTPIN  6
 #define BACKPIN  7
 
+
+// FREE PINS AFTER MOTOR and SONAR ASSIGNMENTS
+// D0 D1 D2 D10
+// A2 A3 A4 A5
+
+
 NewPing sonar[SONAR_NUM] = { 
   NewPing(RIGHTPIN, RIGHTPIN, MAX_DISTANCE),   // Each sensor's trigger pin, echo pin, and max distance to ping.
   NewPing(FRONTPIN, FRONTPIN, MAX_DISTANCE),
@@ -300,12 +332,13 @@ NewPing sonar[SONAR_NUM] = {
   NewPing(BACKPIN, BACKPIN, MAX_DISTANCE)
 };
 
-#define RIGHT 0
-#define FRONT 1
-#define LEFT  2
-#define BACK  3
+#define RIGHT_PING_IDX 0
+#define FRONT_PING_IDX 1
+#define LEFT_PING_IDX  2
+#define BACK_PING_IDX  3
 
-void PingSetup() {
+void 
+PingSetup() {
   for (uint8_t i=0; i< SONAR_NUM; i++) { old[i]=MAX_DISTANCE; last[i]=0; }
   pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
   for (uint8_t i = 1; i < SONAR_NUM; i++) { // Set the starting time for each sensor.
@@ -313,7 +346,20 @@ void PingSetup() {
   }
 }
 
-void PingLoop() {    
+void 
+oneSensorCycle() { // Sensor ping cycle complete, do something with the results.
+ if (PingUpdate) {
+    Serial.print(last[FRONT_PING_IDX]); Serial.print(" ");
+    Serial.print(last[RIGHT_PING_IDX]); Serial.print(" ");
+    Serial.print(last[BACK_PING_IDX]); Serial.print(" ");
+    Serial.print(last[LEFT_PING_IDX]); Serial.print(" ");
+    Serial.print(PingProx);
+    Serial.print("\n");
+  }
+}
+
+void 
+PingLoop() {    
   if (millis() >= pingTimer[currentSensor]) {               // Is it this sensor's time to ping?
       cm[currentSensor] = sonar[currentSensor].ping_cm();                // do measurement -- this blocks
       //Serial.print(currentSensor); Serial.print(": "); Serial.println(cm[currentSensor]);
@@ -336,31 +382,94 @@ void PingLoop() {
   }
 }
 
-void oneSensorCycle() { // Sensor ping cycle complete, do something with the results.
- if (PingUpdate) {
-    Serial.print(last[FRONT]); Serial.print(" ");
-    Serial.print(last[RIGHT]); Serial.print(" ");
-    Serial.print(last[BACK]); Serial.print(" ");
-    Serial.print(last[LEFT]); Serial.print(" ");
-    Serial.print(PingProx);
-    Serial.print("\n");
-  }
+
+// FREE PINS AFTER MOTOR and SONAR ASSIGNMENTS and camera servo
+// D0 D1 D2 
+// A2 A3 A4 A5
+#define CAMERA_TILT_SERVO_PIN 10
+#define CAMERA_TILT_SERVO_MIN 544
+#define CAMERA_TILT_SERVO_MAX 2400
+
+#include <Servo.h>
+
+// servo library uses timer 1
+
+Servo cameraTiltServo;  // create servo object to control a servo
+int CameraTiltAngle=90;
+
+void
+cameraTiltServoUp() {
+   CameraTiltAngle=160;
+   cameraTiltServo.write(CameraTiltAngle);   
 }
 
-void setup()
+
+void
+cameraTiltServoDown() {
+   CameraTiltAngle=60;
+   cameraTiltServo.write(CameraTiltAngle);   
+}
+
+void
+cameraTiltServoStraight() {
+   CameraTiltAngle=86;
+   cameraTiltServo.write(CameraTiltAngle);   
+}
+
+void
+cameraTiltServoInc() {
+   if (CameraTiltAngle < 160) CameraTiltAngle += 1;
+   cameraTiltServo.write(CameraTiltAngle);   
+}
+
+void
+cameraTiltServoDec() {
+   if (CameraTiltAngle > 60) CameraTiltAngle-=1;
+   cameraTiltServo.write(CameraTiltAngle);   
+}
+
+void
+cameraTiltServoSetup()
+{
+  cameraTiltServo.attach(CAMERA_TILT_SERVO_PIN, CAMERA_TILT_SERVO_MIN, CAMERA_TILT_SERVO_MAX);  
+  //Serial.println("cameraTiltServoTest: START");
+  cameraTiltServoStraight();
+}
+
+void
+cameraTiltServoTest()
+{
+//  cameraTiltServo.write(0);
+//  delay(30);
+//  Serial.println("cameraTiltServoTest: START");
+  cameraTiltServoUp(); 
+  delay(1000);
+  cameraTiltServoDown();
+  delay(1000);
+  cameraTiltServoStraight(); 
+  delay(500);
+//  Serial.println("cameraTiltServoTest: END");
+}
+
+void 
+setup()
 {
   Serial.begin(115200);
  
   PingSetup();
-    
+  cameraTiltServoSetup();
+ 
+  cameraTiltServoTest();
+  
   L.setup(); L.reset();
   R.setup(); R.reset(); 
 #if 0 
-  test();
+  testMotors();
 #endif
 }
 
-void loop()
+void 
+loop()
 {
   char c,cmd;
  
@@ -380,18 +489,41 @@ void loop()
   if (Serial.available() >= 1) {
        // read the incoming byte:
        cmd=Serial.read();
-       if (cmd=='\n' || cmd=='\r') return;
-       if (cmd=='l' || cmd=='r') {
-         Serial.readBytes(&c,1);
-         if (cmd=='l') L.doCmd(c);
-         else R.doCmd(c);
-       } else if (cmd=='m') {
-         if (monTimer==0) monTimer = millis() + monInterval;
-         else monTimer=0; 
-       } else {
+     //  Serial.println(cmd);
+       switch (cmd) {
+        case '\n':
+        case '\r':
+          return;
+          break;
+        case 'U':
+          cameraTiltServoUp();
+          break;
+        case 'D':
+          cameraTiltServoDown();
+          break;
+        case '=':
+          cameraTiltServoStraight();
+          break;
+        case '+':
+          cameraTiltServoInc();
+          break;
+        case '-':
+          cameraTiltServoDec();
+          break;  
+        case 'm':
+          if (monTimer==0) monTimer = millis() + monInterval;
+          else monTimer=0; 
+          break;
+        case 'l':
+        case 'r':
+          Serial.readBytes(&c,1);
+          if (cmd=='l') L.doCmd(c);
+          else R.doCmd(c); 
+          break;
+        default:
           L.doCmd(cmd);
           R.doCmd(cmd);
        }
   }
-}  
+} 
 
