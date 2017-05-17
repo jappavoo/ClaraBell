@@ -13,7 +13,7 @@ void
 voice_volume_set()
 {
   char cmd[160];
-  snprintf(cmd, 160, "/usr/bin/pactl set-sink-volume 0 %d%%", volume);
+  snprintf(cmd, 160, "/usr/bin/amixer sset PCM,0 %d%%", volume);
   system(cmd);
 }
 

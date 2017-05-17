@@ -619,7 +619,7 @@ main(int argc, char **argv)
   int netfd, sightfd;
   char greeting[160];
 
-  if (argc!=1) { 
+  if (argc!=1 && argc!=2) { 
     if (argc!=3) {
       fprintf(stderr, 
 	      "USAGE: cbserver <motordev eg. /dev/tty.usbmodem3B11> <sensordev eg. /dev/tty.usbserial-A9003Vnd>\n");
@@ -632,6 +632,17 @@ main(int argc, char **argv)
   bzero(&sensorBoard, sizeof(sensorBoard));
   bzero(&actuatorBoard, sizeof(actuatorBoard));
 
+  if (argc == 2) {
+        actuatorBoard.fd = serialport_init(argv[1],BAUD);
+    if (actuatorBoard.fd < 0) {
+      fprintf(stderr, "ERROR: failed to open motordev=%s\n", argv[1]);
+      return -1;
+    }
+    FD_SET(actuatorBoard.fd, &fdset);
+    if (actuatorBoard.fd>maxfd) maxfd=actuatorBoard.fd;
+    sensorBoard.fd = actuatorBoard.fd;
+  }
+ 
   if (argc == 3) {
     actuatorBoard.fd = serialport_init(argv[1],BAUD);
     if (actuatorBoard.fd < 0) {
@@ -696,11 +707,11 @@ main(int argc, char **argv)
     FD_COPY(&fdset, &rfds);
     FD_COPY(&fdset, &efds);
 #ifdef __TRACE__
-    fprintf(stderr, "calling select:");
+//    fprintf(stderr, "calling select:");
 #endif
     rc = select(maxfd+1, &rfds, NULL, &efds, NULL);
 #ifdef __TRACE__
-    fprintf(stderr, "rc=%d\n", rc);
+ //   fprintf(stderr, "rc=%d\n", rc);
 #endif
     if (rc<0) {
       if (errno==EINTR) {
@@ -713,7 +724,7 @@ main(int argc, char **argv)
     
     if ((FD_ISSET(sensorBoard.fd, &efds) || (FD_ISSET(sensorBoard.fd, &rfds)))) {
 #ifdef __TRACE__
-      write(1,"+",1);
+//      write(1,"+",1);
 #endif
       sn=read(sensorBoard.fd, sbuf, BUFLEN);
       if (sn > 0) {
@@ -739,7 +750,7 @@ main(int argc, char **argv)
 
 	    if (((sensorBoard.prox & 0xF0) == 0) && (sensorBoard.proxWarning==0)) {
 #ifdef __TRACE__
-	      fprintf(stderr, "Proximity Warning OFF\n");
+	 //     fprintf(stderr, "Proximity Warning OFF\n");
 #endif
 	      if (wander.state!=WANDER_NONE) {
 		int front=sensorBoard.d0;
@@ -769,7 +780,7 @@ main(int argc, char **argv)
       }
 
 #ifdef __TRACE__
-      write(1, sbuf, sn);
+      // write(1, sbuf, sn);
 #endif
       for (int i=netfd+1; i<=maxfd; i++) {
 #ifdef __TRACE__
@@ -780,14 +791,15 @@ main(int argc, char **argv)
 	}
       }
     }
-    
-    if ((FD_ISSET(actuatorBoard.fd, &efds) || (FD_ISSET(actuatorBoard.fd, &rfds)))) {
+#if 0 
+    error   
+      if ((FD_ISSET(actuatorBoard.fd, &efds) || (FD_ISSET(actuatorBoard.fd, &rfds)))) {
       fprintf(stderr, "activity on motorfd=%d\n", actuatorBoard.fd);
       mn=read(actuatorBoard.fd, mbuf, BUFLEN);
       fprintf(stderr, "%s: actuatorBoard:", __func__);
       write(2, mbuf, mn);
     }
-    
+#endif 
     if ((FD_ISSET(netfd, &efds) || (FD_ISSET(netfd, &rfds)))) {
       fprintf(stderr, "connection on netfd=%d\n", netfd);
       int fd = net_accept(netfd);
