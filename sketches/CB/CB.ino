@@ -530,11 +530,11 @@ loop()
           cameraTiltServoDec();
           break;
         case 'C':
-         {
-	   long val = Serial.parseInt();
-	   cameraTiltValue(val);
-	 }
-	   break;  
+          {
+	          long val = Serial.parseInt();
+	          cameraTiltValue(val);
+	        }
+	        break;  
         case 'm':
           if (monTimer==0) monTimer = millis() + monInterval;
           else monTimer=0; 
