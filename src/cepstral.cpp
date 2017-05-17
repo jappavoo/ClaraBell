@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <swift.h>
 #define VOICE "Robin"
 
@@ -32,11 +34,14 @@ voice_init()
     }
     
     /* Set the voice found in the last step as the port's current voice */
-    if ( SWIFT_FAILED(res = swift_port_set_voice_by_name(port, VOICE)) ) {
-        const char *error_string = swift_strerror(res);
-        fprintf(stderr, "%s", error_string);
+    voice = swift_port_set_voice_by_name(port, VOICE); 
+    if ( voice == NULL ) {
+        fprintf(stderr, "ERROR: swift_port_set_voice_by_name: %s", VOICE);
         goto all_done;
     }
+    return;
+all_done:
+  exit(-1);
 }
 
 extern void

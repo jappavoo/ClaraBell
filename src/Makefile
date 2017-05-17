@@ -14,7 +14,7 @@ else
   UILIBS = -lSDL
   CB_DEVOBJS=cepstral.o
   CB_CFLAGS= -O3 -Wno-unused-result
-  CB_LIBS = -lswift -leststring -lestools -lestbase
+  CB_LIBS = -L/opt/swift/lib -lswift -leststring -lestools -lestbase
 endif
 
 CFLAGS := -O3 $(UIINCDIR)
@@ -50,7 +50,7 @@ festival.o: festival.cpp voice.h
 	g++ -c $(CB_CFLAGS) festival.cpp -I /usr/include/speech_tools
 
 cepstral.o: cepstral.cpp voice.h
-	g++ -c $(CB_CFLAGS) festival.cpp -I /opt/swift/include
+	g++ -c $(CB_CFLAGS) cepstral.cpp -I /opt/swift/include
 
 aserial.o: arduino-serial.c arduino-serial.h
 	gcc -c $(CB_CFLAGS) -D__LIBRARY__ arduino-serial.c -o aserial.o 

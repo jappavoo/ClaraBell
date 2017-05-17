@@ -499,7 +499,7 @@ cameraCmd(struct Connection *c)
   int len = c->len;
 
   if (len>1) {
-      write(actuatorBoard.fd, line[1], len-1);
+      write(actuatorBoard.fd, &line[1], len-1);
   }
 }
 
@@ -587,6 +587,9 @@ processLine(struct Connection *c)
     switch (line[0]) {
     case 'M': 
       motorCmd(c);
+      break;
+    case 'C':
+      cameraCmd(c);
       break;
 #ifndef __linux__
     case 'S':
