@@ -500,6 +500,7 @@ cameraCmd(struct Connection *c)
 
   if (len>1) {
       write(actuatorBoard.fd, &line[1], len-1);
+//      write(1,&line[1],len-1);
   }
 }
 

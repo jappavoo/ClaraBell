@@ -1,2 +1,2 @@
 #/bin/bash
-sudo LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/swift/lib" aoss /home/pi/ClaraBell/src/cbserver 
+sudo LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/swift/lib" aoss /home/pi/ClaraBell/src/cbserver $1
