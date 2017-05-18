@@ -402,26 +402,26 @@ PingLoop() {
 Servo cameraTiltServo;  // create servo object to control a servo
 int CameraTiltAngle = CAMERA_TILT_STRAIGHT_VAL;
 
-void
+inline void
 cameraTiltServoUp() {
    CameraTiltAngle = CAMERA_TILT_MAX_VAL;
    cameraTiltServo.write(CameraTiltAngle);   
 }
 
 
-void
+inline void
 cameraTiltServoDown() {
    CameraTiltAngle = CAMERA_TILT_MIN_VAL;
    cameraTiltServo.write(CameraTiltAngle);   
 }
 
-void
+inline void
 cameraTiltServoStraight() {
    CameraTiltAngle = CAMERA_TILT_STRAIGHT_VAL;
    cameraTiltServo.write(CameraTiltAngle);   
 }
 
-void
+inline void
 cameraTiltServoInc() {
   if (CameraTiltAngle < CAMERA_TILT_MAX_VAL) {
     CameraTiltAngle += 1;
@@ -429,7 +429,7 @@ cameraTiltServoInc() {
   }
 }
 
-void
+inline void
 cameraTiltServoDec() {
    if (CameraTiltAngle > CAMERA_TILT_MIN_VAL) { 
       CameraTiltAngle-=1;
@@ -437,13 +437,19 @@ cameraTiltServoDec() {
    }
 }
 
-void 
+inline void 
 cameraTiltValue(long val)
 {
   if (val >= CAMERA_TILT_MIN_VAL && val <= CAMERA_TILT_MAX_VAL) {
     CameraTiltAngle=val;		 
     cameraTiltServo.write(CameraTiltAngle);
   } 
+}
+
+inline void 
+cameraTiltSetting(char s)
+{
+    cameraTiltValue(CAMERA_TILT_MIN_VAL + (10 * s));    
 }
 
 void
@@ -534,7 +540,16 @@ loop()
 	          long val = Serial.parseInt();
 	          cameraTiltValue(val);
 	        }
-	        break;  
+	        break;
+        case 'c':
+        {
+          Serial.readBytes(&c,1);
+   
+           Serial.write(&c,1);
+           Serial.println("");
+           if (c>='0' && c<='9') cameraTiltSetting(c-'0'); 
+        }
+        break;
         case 'm':
           if (monTimer==0) monTimer = millis() + monInterval;
           else monTimer=0; 
