@@ -313,6 +313,7 @@ uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
 boolean PingAlarm = true;
 int PingProx = 0;
 boolean PingUpdate = false;
+boolean PingOverRide = false;
 
 #define FRONTPIN 5
 #define RIGHTPIN 4
@@ -500,7 +501,7 @@ loop()
  
   PingLoop();  
   
-  if (PingAlarm == true) { L.stop(); R.stop(); }
+  if (PingAlarm == true && PingOverRide == false) { L.stop(); R.stop(); }
   
   if (monTimer && millis() > monTimer) {
      L.readCurrent();
@@ -550,6 +551,12 @@ loop()
            if (c>='0' && c<='9') cameraTiltSetting(c-'0'); 
         }
         break;
+	case 'O': 
+	  PingOverRide = true;
+	  break;
+        case 'o':
+	  PingOverRide = false;
+	  break;
         case 'm':
           if (monTimer==0) monTimer = millis() + monInterval;
           else monTimer=0; 

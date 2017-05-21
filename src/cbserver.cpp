@@ -492,6 +492,18 @@ sightCmd(struct Connection *c)
 }
 #endif
 
+inline void
+overrideCmd(struct Connection *c)
+{
+  char *line=c->line;
+  int len = c->len;
+
+  if (len>1) {
+      write(actuatorBoard.fd, &line[1], len-1);
+//      write(1,&line[1],len-1);
+  }
+}
+
 inline void 
 cameraCmd(struct Connection *c)
 {
@@ -599,6 +611,9 @@ processLine(struct Connection *c)
 #endif
     case 'V':
       voiceCmd(c);
+      break;
+    case 'O':
+      overrideCmd(c);
       break;
     case 'W':
       fprintf(stderr, "Wandering started\n");
