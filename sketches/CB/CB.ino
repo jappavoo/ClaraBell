@@ -551,12 +551,12 @@ loop()
            if (c>='0' && c<='9') cameraTiltSetting(c-'0'); 
         }
         break;
-	case 'O': 
-	  PingOverRide = true;
-	  break;
+	      case 'O': 
+	        PingOverRide = true;
+	        break;
         case 'o':
-	  PingOverRide = false;
-	  break;
+	        PingOverRide = false;
+	        break;
         case 'm':
           if (monTimer==0) monTimer = millis() + monInterval;
           else monTimer=0; 
